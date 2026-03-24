@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>X3DOM</title>
+
+  <!-- X3DOM -->
+  <link rel="stylesheet" href="https://www.x3dom.org/release/x3dom.css">
+  <script src="https://www.x3dom.org/release/x3dom.js"></script>
+
+  <!-- D3 v7 -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      display: flex;
+      height: 100vh;
+    }
+
+    /* ── Hide X3DOM built-in UI ── */
+    #x3dom-navi, .x3dom-navi,
+    .x3dom-progress, .x3dom-logContainer,
+    [id^="x3dom-"] > div { display: none !important; }
+
+    /* ── Left: 3D viewer ── */
+    #left-panel {
+      flex: none;
+      width: 80%;
+      height: 100vh;
+      position: relative;
+    }
+    #x3d {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* ── Resizer ── */
+    #resizer {
+      flex: none;
+      width: 5px;
+      cursor: col-resize;
+      background: #555;
+      transition: background .15s;
+      z-index: 10;
+    }
+    #resizer:hover, #resizer.dragging { background: #aaa; }
+
+    /* ── Right: D3 graph ── */
+    #right-panel {
+      flex: 1;
+      height: 100vh;
+      background: #1a1a2e;
+      position: relative;
+      overflow: hidden;
+    }
+    #graph-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* ── Graph elements ── */
+    .link {
+      stroke: #4a5568;
+      stroke-width: 2;
+      cursor: pointer;
+    }
+    .link:hover, .link.selected { stroke: #e94560; stroke-width: 3; }
+
+    .node circle {
+      fill: #2d3748;
+      stroke: #63b3ed;
+      stroke-width: 2;
+      cursor: grab;
+    }
+    .node circle:active { cursor: grabbing; }
+    .node circle:hover  { fill: #2b6cb0; }
+    .node.selected circle { fill: #e94560; stroke: #fff; }
+
+    .node text {
+      fill: #e2e8f0;
+      font-size: 11px;
+      font-family: 'Segoe UI', sans-serif;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    #drag-line {
+      stroke: #e94560;
+      stroke-width: 2;
+      stroke-dasharray: 6 3;
+      pointer-events: none;
+    }
+
+    /* ── Mode hint (bottom-left of graph panel) ── */
+    #mode-hint {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      font-size: 11px;
+      font-family: 'Segoe UI', sans-serif;
+      color: #718096;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Left: 3D model (unchanged) -->
+  <div id="left-panel">
+    <x3d id="x3d">
+      <scene>
+        <navigationInfo type="EXAMINE" headlight="true"></navigationInfo>
+        <viewpoint position="0 0 50" orientation="0 0 0 0"></viewpoint>
+        <background skyColor="0.75 0.75 0.75"></background>
+
+        <Environment SSAO="true" SSAOradius="0.5"></Environment>
+
+        <transform scale="10 10 10" translation="0 -10 0">
+          <inline url="05-5-1.x3d"></inline>
+        </transform>
+      </scene>
+    </x3d>
+  </div>
+
+  <!-- Resizer -->
+  <div id="resizer"></div>
+
+  <!-- Right: D3 graph editor -->
+  <div id="right-panel">
+    <svg id="graph-svg"></svg>
+    <div id="mode-hint"></div>
+  </div>
+
+  <script src="script.js"></script>
+
+  <!-- Remove X3DOM nav buttons after runtime inits -->
+  <script>
+  (function removeX3domUI() {
+    const selectors = ['#x3dom-navi', '.x3dom-navi', '.x3dom-progress', '.x3dom-logContainer'];
+    function clean() {
+      selectors.forEach(sel => document.querySelectorAll(sel).forEach(el => el.remove()));
+    }
+    // Run immediately and again after X3DOM finishes loading
+    clean();
+    document.addEventListener('DOMContentLoaded', clean);
+    window.addEventListener('load', clean);
+    // MutationObserver catches anything inserted later
+    new MutationObserver(clean).observe(document.body, { childList: true, subtree: true });
+  })();
+  </script>
+
+  <script>
+  /* ─────────────────────────────────────────
+     Resizable split
+  ───────────────────────────────────────── */
+  (function () {
+    const resizer   = document.getElementById('resizer');
+    const leftPanel = document.getElementById('left-panel');
+    let dragging = false, startX, startW;
+
+    resizer.addEventListener('mousedown', e => {
+      dragging = true;
+      startX = e.clientX;
+      startW = leftPanel.offsetWidth;
+      resizer.classList.add('dragging');
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+    });
+    document.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      const w = Math.max(200, Math.min(window.innerWidth - 200, startW + e.clientX - startX));
+      leftPanel.style.width = w + 'px';
+      // notify X3DOM to resize
+      if (window.x3dom) x3dom.reload();
+    });
+    document.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      resizer.classList.remove('dragging');
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    });
+  })();
+
+  /* ─────────────────────────────────────────
+     D3 Graph Editor
+  ───────────────────────────────────────── */
+  (function () {
+    const svg  = d3.select('#graph-svg');
+    const hint = document.getElementById('mode-hint');
+
+    /* ── State ── */
+    let MODE   = 'select';
+    let nodes  = [];
+    let links  = [];
+    let nodeId = 0;
+    let selected = null;
+    let edgeSrc  = null;
+
+    /* ── Layers ── */
+    const linkG    = svg.append('g');
+    const nodeG    = svg.append('g');
+    const dragLine = svg.append('line').attr('id', 'drag-line').style('display', 'none');
+
+    /* ── Simulation ── */
+    const sim = d3.forceSimulation(nodes)
+      .force('link',    d3.forceLink(links).id(d => d.id).distance(130))
+      .force('charge',  d3.forceManyBody().strength(-320))
+      .force('collide', d3.forceCollide(42))
+      .alphaDecay(0.02)
+      .on('tick', ticked);
+
+    /* ── Keyboard shortcuts ── */
+    const HINTS = {
+      select: 'V 選取  N 新增節點  E 連接邊  Del 刪除選取',
+      node:   'N 新增節點 — 點擊空白處  |  V 切回選取',
+      edge:   'E 連接邊 — 點起點再點終點  |  Esc 取消',
+      delete: 'Del 刪除 — 點擊節點或邊  |  V 切回選取',
+    };
+    function setMode(m) {
+      MODE = m; edgeSrc = null; dragLine.style('display', 'none');
+      svg.style('cursor', m === 'node' ? 'cell' : 'default');
+      hint.textContent = HINTS[m] || '';
+    }
+    document.addEventListener('keydown', e => {
+      if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+      if (e.key === 'v' || e.key === 'V') setMode('select');
+      if (e.key === 'n' || e.key === 'N') setMode('node');
+      if (e.key === 'e' || e.key === 'E') setMode('edge');
+      if (e.key === 'Escape') { edgeSrc = null; dragLine.style('display', 'none'); setMode('select'); }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selected) deleteSelected();
+    });
+
+    /* ── SVG background click ── */
+    svg.on('click', function (event) {
+      if (event.target !== this) return;
+      if (MODE === 'node') addNode(event);
+      else deselect();
+      edgeSrc = null; dragLine.style('display', 'none');
+    });
+
+    svg.on('mousemove', function (event) {
+      if (MODE === 'edge' && edgeSrc) {
+        const [x, y] = d3.pointer(event, this);
+        dragLine.attr('x2', x).attr('y2', y);
+      }
+    });
+
+    /* ── CRUD ── */
+    function addNode(event) {
+      const [x, y] = d3.pointer(event, svg.node());
+      nodes.push({ id: ++nodeId, label: `節點${nodeId}`, x, y });
+      restart(); sim.alpha(0.3).restart();
+    }
+
+    function deleteSelected() {
+      if (!selected) return;
+      if (selected._type === 'node') {
+        nodes = nodes.filter(d => d !== selected);
+        links = links.filter(l => l.source !== selected && l.target !== selected);
+      } else {
+        links = links.filter(l => l !== selected);
+      }
+      selected = null; restart(); sim.alpha(0.3).restart();
+    }
+
+    function deselect() {
+      selected = null;
+      nodeG.selectAll('.node').classed('selected', false);
+      linkG.selectAll('.link').classed('selected', false);
+    }
+
+    /* ── Render ── */
+    let linkSel, nodeSel;
+
+    function restart() {
+      /* Links */
+      linkSel = linkG.selectAll('.link')
+        .data(links, d => `${d.source.id ?? d.source}-${d.target.id ?? d.target}`);
+      linkSel.exit().remove();
+      linkSel = linkSel.enter().append('line').attr('class', 'link')
+        .on('click', function (ev, d) {
+          ev.stopPropagation();
+          if (MODE === 'delete') { links = links.filter(l => l !== d); restart(); sim.alpha(0.1).restart(); return; }
+          deselect(); d._type = 'link'; selected = d;
+          d3.select(this).classed('selected', true);
+        })
+        .merge(linkSel);
+
+      /* Nodes */
+      nodeSel = nodeG.selectAll('.node').data(nodes, d => d.id);
+      nodeSel.exit().remove();
+      const enter = nodeSel.enter().append('g').attr('class', 'node')
+        .call(d3.drag().on('start', dragStart).on('drag', dragged).on('end', dragEnd))
+        .on('click', nodeClick);
+      enter.append('circle').attr('r', 30);
+      enter.append('text').attr('dy', 4).attr('text-anchor', 'middle');
+      nodeSel = enter.merge(nodeSel);
+      nodeSel.select('text').text(d => d.label);
+
+      sim.nodes(nodes);
+      sim.force('link').links(links);
+      sim.alpha(0.1).restart();
+    }
+
+    function ticked() {
+      if (!linkSel || !nodeSel) return;
+      linkSel
+        .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+      nodeSel.attr('transform', d => `translate(${d.x},${d.y})`);
+    }
+
+    /* ── Node interaction ── */
+    function nodeClick(ev, d) {
+      ev.stopPropagation();
+      if (MODE === 'delete') {
+        nodes = nodes.filter(n => n !== d);
+        links = links.filter(l => l.source !== d && l.target !== d);
+        selected = null; restart(); sim.alpha(0.3).restart(); return;
+      }
+      if (MODE === 'edge') {
+        if (!edgeSrc) {
+          edgeSrc = d;
+          dragLine.style('display', null).attr('x1', d.x).attr('y1', d.y).attr('x2', d.x).attr('y2', d.y);
+        } else if (edgeSrc !== d) {
+          const dup = links.some(l =>
+            (l.source === edgeSrc && l.target === d) || (l.source === d && l.target === edgeSrc));
+          if (!dup) links.push({ source: edgeSrc, target: d, _type: 'link' });
+          edgeSrc = null; dragLine.style('display', 'none');
+          restart(); sim.alpha(0.3).restart();
+        }
+        return;
+      }
+      deselect(); d._type = 'node'; selected = d;
+      d3.select(this).classed('selected', true);
+    }
+
+    function dragStart(ev, d) {
+      if (MODE === 'edge') return;
+      if (!ev.active) sim.alphaTarget(0.3).restart();
+      d.fx = d.x; d.fy = d.y;
+    }
+    function dragged(ev, d) {
+      if (MODE === 'edge') return;
+      d.fx = ev.x; d.fy = ev.y;
+    }
+    function dragEnd(ev, d) {
+      if (MODE === 'edge') return;
+      if (!ev.active) sim.alphaTarget(0);
+      d.fx = null; d.fy = null;
+    }
+
+    /* ── Seed example ── */
+    const labels = ['斗', '栱', '昂', '枋', '補間'];
+    labels.forEach((label, i) => {
+      const a = (i / labels.length) * 2 * Math.PI;
+      const svgEl = document.getElementById('graph-svg');
+      const w = svgEl.clientWidth  || 200;
+      const h = svgEl.clientHeight || 600;
+      const r = Math.min(w, h) * 0.30;
+      nodes.push({ id: ++nodeId, label, x: w / 2 + r * Math.cos(a), y: h / 2 + r * Math.sin(a) });
+    });
+    [[0,1],[1,2],[2,3],[3,4],[4,0],[0,2]].forEach(([s,t]) =>
+      links.push({ source: nodes[s], target: nodes[t], _type: 'link' }));
+    restart();
+    setMode('select');
+  })();
+  </script>
+
+</body>
+</html>
