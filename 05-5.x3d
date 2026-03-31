@@ -171,12 +171,12 @@
 				</Group>
 			</Transform>
 		</Transform>
-		<Transform DEF="Dou_02_TRANSFORM"
+		<Transform DEF="Gong_02_TRANSFORM"
 		           translation="-0.063462 -0.112880 -0.458859"
 		           scale="0.025400 0.025400 0.025400"
 		           rotation="-0.577350 -0.577350 -0.577350 2.094395"
 		           >
-			<Transform DEF="Dou_02_ifs_TRANSFORM"
+			<Transform DEF="Gong_02_ifs_TRANSFORM"
 			           translation="-0.000000 0.000000 0.000000"
 			           scale="1.000000 1.000000 1.000000"
 			           rotation="-0.000000 -0.000000 -0.000000 0.000000"
@@ -339,12 +339,12 @@
 				</Group>
 			</Transform>
 		</Transform>
-		<Transform DEF="Dou_01_TRANSFORM"
+		<Transform DEF="Gong_01_TRANSFORM"
 		           translation="-0.063462 -0.322880 -0.308859"
 		           scale="0.025400 0.025400 0.025400"
 		           rotation="-0.577350 -0.577350 -0.577350 2.094395"
 		           >
-			<Transform DEF="Dou_01_ifs_TRANSFORM"
+			<Transform DEF="Gong_01_ifs_TRANSFORM"
 			           translation="-0.000000 -0.000000 -0.000001"
 			           scale="1.000000 1.000000 1.000000"
 			           rotation="-0.000000 -0.000000 -0.000000 0.000000"
@@ -395,12 +395,12 @@
 				</Group>
 			</Transform>
 		</Transform>
-		<Transform DEF="Gong_02-4_TRANSFORM"
+		<Transform DEF="Dou_02-4_TRANSFORM"
 		           translation="-0.093463 -0.172880 0.331142"
 		           scale="0.025400 0.025400 0.025400"
 		           rotation="-1.000000 0.000000 0.000000 1.570796"
 		           >
-			<Transform DEF="Gong_02-4_ifs_TRANSFORM"
+			<Transform DEF="Dou_02-4_ifs_TRANSFORM"
 			           translation="0.000000 0.000000 0.000001"
 			           scale="1.000000 1.000000 1.000000"
 			           rotation="-0.000000 0.000000 0.000000 0.000000"
@@ -423,12 +423,12 @@
 				</Group>
 			</Transform>
 		</Transform>
-		<Transform DEF="Dou_03_TRANSFORM"
+		<Transform DEF="Gong_03_TRANSFORM"
 		           translation="0.236537 -0.112880 -0.358859"
 		           scale="0.025400 0.025400 0.025400"
 		           rotation="-0.577350 -0.577350 -0.577350 2.094395"
 		           >
-			<Transform DEF="Dou_03_ifs_TRANSFORM"
+			<Transform DEF="Gong_03_ifs_TRANSFORM"
 			           translation="0.000001 -0.000001 -0.000000"
 			           scale="1.000000 1.000000 1.000000"
 			           rotation="-0.000000 -0.000000 -0.000000 0.000000"
@@ -451,12 +451,12 @@
 				</Group>
 			</Transform>
 		</Transform>
-		<Transform DEF="Gong_03-3_TRANSFORM"
+		<Transform DEF="Dou_03-3_TRANSFORM"
 		           translation="-0.093463 0.037120 -0.338858"
 		           scale="0.025400 0.025400 0.025400"
 		           rotation="-1.000000 0.000000 0.000000 1.570796"
 		           >
-			<Transform DEF="Gong_03-3_ifs_TRANSFORM"
+			<Transform DEF="Dou_03-3_ifs_TRANSFORM"
 			           translation="0.000000 -0.000002 -0.000000"
 			           scale="1.000000 1.000000 1.000000"
 			           rotation="-0.000000 0.000000 0.000000 0.000000"
@@ -464,12 +464,12 @@
 				<Group USE="group_ME_Shape_IndexedFaceSet_013" />
 			</Transform>
 		</Transform>
-		<Transform DEF="Gong_03-4_TRANSFORM"
+		<Transform DEF="Dou_03-4_TRANSFORM"
 		           translation="-0.393463 0.037120 -0.238859"
 		           scale="0.025400 0.025400 0.025400"
 		           rotation="-1.000000 0.000000 0.000000 1.570796"
 		           >
-			<Transform DEF="Gong_03-4_ifs_TRANSFORM"
+			<Transform DEF="Dou_03-4_ifs_TRANSFORM"
 			           translation="0.000001 -0.000001 -0.000000"
 			           scale="1.000000 1.000000 1.000000"
 			           rotation="-0.000000 0.000000 0.000000 0.000000"
@@ -477,12 +477,12 @@
 				<Group USE="group_ME_Shape_IndexedFaceSet_013" />
 			</Transform>
 		</Transform>
-		<Transform DEF="Gong_03-5_TRANSFORM"
+		<Transform DEF="Dou_03-5_TRANSFORM"
 		           translation="-0.393463 0.037120 0.091142"
 		           scale="0.025400 0.025400 0.025400"
 		           rotation="-1.000000 0.000000 0.000000 1.570796"
 		           >
-			<Transform DEF="Gong_03-5_ifs_TRANSFORM"
+			<Transform DEF="Dou_03-5_ifs_TRANSFORM"
 			           translation="0.000001 0.000000 -0.000000"
 			           scale="1.000000 1.000000 1.000000"
 			           rotation="-0.000000 0.000000 0.000000 0.000000"
@@ -505,12 +505,12 @@
 				</Group>
 			</Transform>
 		</Transform>
-		<Transform DEF="Gong_02-1_TRANSFORM"
+		<Transform DEF="Dou_02-1_TRANSFORM"
 		           translation="0.206537 -0.172880 0.091141"
 		           scale="0.025400 0.025400 0.025400"
 		           rotation="-1.000000 0.000000 0.000000 1.570796"
 		           >
-			<Transform DEF="Gong_02-1_ifs_TRANSFORM"
+			<Transform DEF="Dou_02-1_ifs_TRANSFORM"
 			           translation="-0.000001 -0.000000 0.000000"
 			           scale="1.000000 1.000000 1.000000"
 			           rotation="-0.000000 0.000000 0.000000 0.000000"
@@ -533,12 +533,12 @@
 				</Group>
 			</Transform>
 		</Transform>
-		<Transform DEF="Gong_02-2_TRANSFORM"
+		<Transform DEF="Dou_02-2_TRANSFORM"
 		           translation="-0.093463 -0.172880 -0.188859"
 		           scale="0.025400 0.025400 0.025400"
 		           rotation="-1.000000 0.000000 0.000000 1.570796"
 		           >
-			<Transform DEF="Gong_02-2_ifs_TRANSFORM"
+			<Transform DEF="Dou_02-2_ifs_TRANSFORM"
 			           translation="0.000000 -0.000000 0.000001"
 			           scale="1.000000 1.000000 1.000000"
 			           rotation="-0.000000 0.000000 0.000000 0.000000"
@@ -546,12 +546,12 @@
 				<Group USE="group_ME_Shape_IndexedFaceSet_013" />
 			</Transform>
 		</Transform>
-		<Transform DEF="Gong_03-8_TRANSFORM"
+		<Transform DEF="Dou_03-8_TRANSFORM"
 		           translation="0.206537 0.037120 0.381142"
 		           scale="0.025400 0.025400 0.025400"
 		           rotation="-1.000000 0.000000 0.000000 1.570796"
 		           >
-			<Transform DEF="Gong_03-8_ifs_TRANSFORM"
+			<Transform DEF="Dou_03-8_ifs_TRANSFORM"
 			           translation="-0.000001 0.000000 -0.000000"
 			           scale="1.000000 1.000000 1.000000"
 			           rotation="-0.000000 0.000000 0.000000 0.000000"
@@ -559,12 +559,12 @@
 				<Group USE="group_ME_Shape_IndexedFaceSet_013" />
 			</Transform>
 		</Transform>
-		<Transform DEF="Gong_03-6_TRANSFORM"
+		<Transform DEF="Dou_03-6_TRANSFORM"
 		           translation="-0.393463 0.037120 0.381142"
 		           scale="0.025400 0.025400 0.025400"
 		           rotation="-1.000000 0.000000 0.000000 1.570796"
 		           >
-			<Transform DEF="Gong_03-6_ifs_TRANSFORM"
+			<Transform DEF="Dou_03-6_ifs_TRANSFORM"
 			           translation="0.000001 0.000000 -0.000000"
 			           scale="1.000000 1.000000 1.000000"
 			           rotation="-0.000000 0.000000 0.000000 0.000000"
@@ -572,12 +572,12 @@
 				<Group USE="group_ME_Shape_IndexedFaceSet_013" />
 			</Transform>
 		</Transform>
-		<Transform DEF="Gong_01_TRANSFORM"
+		<Transform DEF="Dou_01_TRANSFORM"
 		           translation="0.146537 -0.442880 -0.158859"
 		           scale="0.025400 0.025400 0.025400"
 		           rotation="-0.000000 -0.707107 -0.707107 3.141592"
 		           >
-			<Transform DEF="Gong_01_ifs_TRANSFORM"
+			<Transform DEF="Dou_01_ifs_TRANSFORM"
 			           translation="-0.000000 0.000000 -0.000000"
 			           scale="1.000000 1.000000 1.000000"
 			           rotation="0.000000 -0.000000 -0.000000 0.000000"
@@ -600,12 +600,12 @@
 				</Group>
 			</Transform>
 		</Transform>
-		<Transform DEF="Gong_03-1_TRANSFORM"
+		<Transform DEF="Dou_03-1_TRANSFORM"
 		           translation="0.366537 0.037120 -0.088858"
 		           scale="0.025400 0.025400 0.025400"
 		           rotation="-0.000000 -0.707107 -0.707107 3.141592"
 		           >
-			<Transform DEF="Gong_03-1_ifs_TRANSFORM"
+			<Transform DEF="Dou_03-1_ifs_TRANSFORM"
 			           translation="0.000001 0.000000 -0.000000"
 			           scale="1.000000 1.000000 1.000000"
 			           rotation="0.000000 -0.000000 -0.000000 0.000000"
@@ -613,12 +613,12 @@
 				<Group USE="group_ME_Shape_IndexedFaceSet_015" />
 			</Transform>
 		</Transform>
-		<Transform DEF="Gong_03-7_TRANSFORM"
+		<Transform DEF="Dou_03-7_TRANSFORM"
 		           translation="-0.093463 0.037120 0.481141"
 		           scale="0.025400 0.025400 0.025400"
 		           rotation="-1.000000 0.000000 0.000000 1.570796"
 		           >
-			<Transform DEF="Gong_03-7_ifs_TRANSFORM"
+			<Transform DEF="Dou_03-7_ifs_TRANSFORM"
 			           translation="0.000000 0.000002 -0.000000"
 			           scale="1.000000 1.000000 1.000000"
 			           rotation="-0.000000 0.000000 0.000000 0.000000"
@@ -626,12 +626,12 @@
 				<Group USE="group_ME_Shape_IndexedFaceSet_013" />
 			</Transform>
 		</Transform>
-		<Transform DEF="Gong_03-2_TRANSFORM"
+		<Transform DEF="Dou_03-2_TRANSFORM"
 		           translation="0.206537 0.037120 -0.238859"
 		           scale="0.025400 0.025400 0.025400"
 		           rotation="-1.000000 0.000000 0.000000 1.570796"
 		           >
-			<Transform DEF="Gong_03-2_ifs_TRANSFORM"
+			<Transform DEF="Dou_03-2_ifs_TRANSFORM"
 			           translation="-0.000001 -0.000001 -0.000000"
 			           scale="1.000000 1.000000 1.000000"
 			           rotation="-0.000000 0.000000 0.000000 0.000000"
@@ -639,12 +639,12 @@
 				<Group USE="group_ME_Shape_IndexedFaceSet_013" />
 			</Transform>
 		</Transform>
-		<Transform DEF="Dou_04_TRANSFORM"
+		<Transform DEF="Gong_04_TRANSFORM"
 		           translation="-0.363463 -0.112880 -0.358859"
 		           scale="0.025400 0.025400 0.025400"
 		           rotation="-0.577350 -0.577350 -0.577350 2.094395"
 		           >
-			<Transform DEF="Dou_04_ifs_TRANSFORM"
+			<Transform DEF="Gong_04_ifs_TRANSFORM"
 			           translation="0.000000 -0.000000 -0.000000"
 			           scale="1.000000 1.000000 1.000000"
 			           rotation="-0.000000 -0.000000 -0.000000 0.000000"
@@ -652,12 +652,12 @@
 				<Group USE="group_ME_Shape_IndexedFaceSet_014" />
 			</Transform>
 		</Transform>
-		<Transform DEF="Gong_02-3_TRANSFORM"
+		<Transform DEF="Dou_02-3_TRANSFORM"
 		           translation="-0.233463 -0.172880 -0.088859"
 		           scale="0.025400 0.025400 0.025400"
 		           rotation="-0.000000 -0.707107 -0.707107 3.141592"
 		           >
-			<Transform DEF="Gong_02-3_ifs_TRANSFORM"
+			<Transform DEF="Dou_02-3_ifs_TRANSFORM"
 			           translation="-0.000000 0.000000 0.000000"
 			           scale="1.000000 1.000000 1.000000"
 			           rotation="0.000000 -0.000000 -0.000000 0.000000"

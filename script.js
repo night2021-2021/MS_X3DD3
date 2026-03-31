@@ -19,11 +19,11 @@
    Highlight system: connect D3 nodes to X3D shapes
 ───────────────────────────────────────── */
 const TYPE_DEFS = {
-  '栱': ['Dou_01','Dou_02','Dou_03','Dou_04'],
-  '斗': ['Gong_01',
-         'Gong_02-1','Gong_02-2','Gong_02-3','Gong_02-4',
-         'Gong_03-1','Gong_03-2','Gong_03-3','Gong_03-4',
-         'Gong_03-5','Gong_03-6','Gong_03-7','Gong_03-8'],
+  '斗': ['Dou_01',
+         'Dou_02-1','Dou_02-2','Dou_02-3','Dou_02-4',
+         'Dou_03-1','Dou_03-2','Dou_03-3','Dou_03-4',
+         'Dou_03-5','Dou_03-6','Dou_03-7','Dou_03-8'],
+  '栱': ['Gong_01','Gong_02','Gong_03','Gong_04'],
 };
 const ORIG_DIFFUSE = '0.45 0.28 0.14';
 const ORIG_SPEC    = '0.22 0.14 0.07';
@@ -100,23 +100,23 @@ function restoreMats(name) {
 
 // ── DEF display names ──
 const DEF_LABELS = {
-  'Dou_01':   { zh: '栱', sub: '泥道栱' },
-  'Dou_02':   { zh: '栱', sub: '瓜子栱' },
-  'Dou_03':   { zh: '栱', sub: '瓜子栱' },
-  'Dou_04':   { zh: '栱', sub: '慢栱'   },
-  'Gong_01':  { zh: '斗', sub: '坐斗'   },
-  'Gong_02-1':{ zh: '斗', sub: '散斗'   },
-  'Gong_02-2':{ zh: '斗', sub: '散斗'   },
-  'Gong_02-3':{ zh: '斗', sub: '散斗'   },
-  'Gong_02-4':{ zh: '斗', sub: '散斗'   },
-  'Gong_03-1':{ zh: '斗', sub: '散斗'   },
-  'Gong_03-2':{ zh: '斗', sub: '散斗'   },
-  'Gong_03-3':{ zh: '斗', sub: '散斗'   },
-  'Gong_03-4':{ zh: '斗', sub: '散斗'   },
-  'Gong_03-5':{ zh: '斗', sub: '散斗'   },
-  'Gong_03-6':{ zh: '斗', sub: '散斗'   },
-  'Gong_03-7':{ zh: '斗', sub: '散斗'   },
-  'Gong_03-8':{ zh: '斗', sub: '散斗'   },
+  'Dou_01':   { zh: '斗', sub: '坐斗'   },
+  'Dou_02-1': { zh: '斗', sub: '散斗'   },
+  'Dou_02-2': { zh: '斗', sub: '散斗'   },
+  'Dou_02-3': { zh: '斗', sub: '散斗'   },
+  'Dou_02-4': { zh: '斗', sub: '散斗'   },
+  'Dou_03-1': { zh: '斗', sub: '散斗'   },
+  'Dou_03-2': { zh: '斗', sub: '散斗'   },
+  'Dou_03-3': { zh: '斗', sub: '散斗'   },
+  'Dou_03-4': { zh: '斗', sub: '散斗'   },
+  'Dou_03-5': { zh: '斗', sub: '散斗'   },
+  'Dou_03-6': { zh: '斗', sub: '散斗'   },
+  'Dou_03-7': { zh: '斗', sub: '散斗'   },
+  'Dou_03-8': { zh: '斗', sub: '散斗'   },
+  'Gong_01':  { zh: '栱', sub: '泥道栱' },
+  'Gong_02':  { zh: '栱', sub: '瓜子栱' },
+  'Gong_03':  { zh: '栱', sub: '瓜子栱' },
+  'Gong_04':  { zh: '栱', sub: '慢栱'   },
 };
 
 // ── Hover system (init after matMap is built) ──
