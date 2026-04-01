@@ -19,7 +19,7 @@
    Highlight system: connect D3 nodes to X3D shapes
 ───────────────────────────────────────── */
 const TYPE_DEFS = {
-  '斗': ['Dou_01',
+  '枓': ['Dou_01',
          'Dou_02-1','Dou_02-2','Dou_02-3','Dou_02-4',
          'Dou_03-1','Dou_03-2','Dou_03-3','Dou_03-4',
          'Dou_03-5','Dou_03-6','Dou_03-7','Dou_03-8'],
@@ -100,19 +100,19 @@ function restoreMats(name) {
 
 // ── DEF display names ──
 const DEF_LABELS = {
-  'Dou_01':   { zh: '斗', sub: '坐斗'   },
-  'Dou_02-1': { zh: '斗', sub: '散斗'   },
-  'Dou_02-2': { zh: '斗', sub: '散斗'   },
-  'Dou_02-3': { zh: '斗', sub: '散斗'   },
-  'Dou_02-4': { zh: '斗', sub: '散斗'   },
-  'Dou_03-1': { zh: '斗', sub: '散斗'   },
-  'Dou_03-2': { zh: '斗', sub: '散斗'   },
-  'Dou_03-3': { zh: '斗', sub: '散斗'   },
-  'Dou_03-4': { zh: '斗', sub: '散斗'   },
-  'Dou_03-5': { zh: '斗', sub: '散斗'   },
-  'Dou_03-6': { zh: '斗', sub: '散斗'   },
-  'Dou_03-7': { zh: '斗', sub: '散斗'   },
-  'Dou_03-8': { zh: '斗', sub: '散斗'   },
+  'Dou_01':   { zh: '枓', sub: '櫨枓'   },
+  'Dou_02-1': { zh: '枓', sub: '散枓'   },
+  'Dou_02-2': { zh: '枓', sub: '散枓'   },
+  'Dou_02-3': { zh: '枓', sub: '散枓'   },
+  'Dou_02-4': { zh: '枓', sub: '散枓'   },
+  'Dou_03-1': { zh: '枓', sub: '散枓'   },
+  'Dou_03-2': { zh: '枓', sub: '散枓'   },
+  'Dou_03-3': { zh: '枓', sub: '散枓'   },
+  'Dou_03-4': { zh: '枓', sub: '散枓'   },
+  'Dou_03-5': { zh: '枓', sub: '散枓'   },
+  'Dou_03-6': { zh: '枓', sub: '散枓'   },
+  'Dou_03-7': { zh: '枓', sub: '散枓'   },
+  'Dou_03-8': { zh: '枓', sub: '散枓'   },
   'Gong_01':  { zh: '栱', sub: '泥道栱' },
   'Gong_02':  { zh: '栱', sub: '瓜子栱' },
   'Gong_03':  { zh: '栱', sub: '瓜子栱' },
@@ -387,12 +387,12 @@ fetch('05-5.x3d')
     d.fx = null; d.fy = null;
   }
 
-  /* ── Seed: 斗 / 栱 ── */
+  /* ── Seed: 枓 / 栱 ── */
   const svgEl = document.getElementById('graph-svg');
   const w = svgEl.clientWidth  || 200;
   const h = svgEl.clientHeight || 600;
   const r = Math.min(w, h) * 0.28;
-  [{ label: '斗', type: '斗' }, { label: '栱', type: '栱' }].forEach((s, i) => {
+  [{ label: '枓', type: '枓' }, { label: '栱', type: '栱' }].forEach((s, i) => {
     const a = (i / 2) * 2 * Math.PI;
     nodes.push({ id: ++nodeId, label: s.label, type: s.type,
                  x: w / 2 + r * Math.cos(a), y: h / 2 + r * Math.sin(a) });
