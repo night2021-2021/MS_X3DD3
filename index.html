@@ -65,12 +65,19 @@
     }
 
     /* ── Graph elements ── */
-    .link {
+    .link { cursor: pointer; }
+
+    .link .link-hit {
+      stroke: transparent;
+      stroke-width: 20;
+    }
+    .link .link-vis {
       stroke: #4a5568;
       stroke-width: 2;
-      cursor: pointer;
+      pointer-events: none;
     }
-    .link:hover, .link.selected { stroke: #e94560; stroke-width: 3; }
+    .link:hover .link-vis,
+    .link.selected .link-vis { stroke: #e94560; stroke-width: 3; }
 
     .node circle {
       fill: #2d3748;

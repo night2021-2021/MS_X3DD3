@@ -19,11 +19,17 @@
    Highlight system: connect D3 nodes to X3D shapes
 ───────────────────────────────────────── */
 const TYPE_DEFS = {
-  '枓': ['Dou_01',
-         'Dou_02-1','Dou_02-2','Dou_02-3','Dou_02-4',
-         'Dou_03-1','Dou_03-2','Dou_03-3','Dou_03-4',
-         'Dou_03-5','Dou_03-6','Dou_03-7','Dou_03-8'],
-  '栱': ['Gong_01','Gong_02','Gong_03','Gong_04'],
+  '枓': ['_01_Lu_Dou',
+         '_04_Jiao_Hu_Dou', '_05_Jiao_Hu_Dou',
+         '_07_Qi_Xin_Dou',  '_08_Qi_Xin_Dou',
+         '_13_San_Dou', '_14_San_Dou', '_15_San_Dou', '_16_San_Dou',
+         '_17_Jiao_Hu_Dou', '_18_Jiao_Hu_Dou',
+         '_19_Qi_Xin_Dou',  '_20_Qi_Xin_Dou'],
+  '栱': ['_02_Ni_Dao_Gong', '_09_Gua_Zi_Gong', '_10_Gua_Zi_Gong', '_11_Mang_Gong'],
+  '昂': ['_03_Xia_Ang'],
+  '栿': ['_06_Fu'],
+  '耍頭': ['_12_Shua_Tou'],
+  '枋': ['_21_Fang', '_22_Fang', '_23_Fang', '_24_Fang'],
 };
 const ORIG_DIFFUSE = '0.45 0.28 0.14';
 const ORIG_SPEC    = '0.22 0.14 0.07';
@@ -100,23 +106,30 @@ function restoreMats(name) {
 
 // ── DEF display names ──
 const DEF_LABELS = {
-  'Dou_01':   { zh: '枓', sub: '櫨枓'   },
-  'Dou_02-1': { zh: '枓', sub: '散枓'   },
-  'Dou_02-2': { zh: '枓', sub: '散枓'   },
-  'Dou_02-3': { zh: '枓', sub: '散枓'   },
-  'Dou_02-4': { zh: '枓', sub: '散枓'   },
-  'Dou_03-1': { zh: '枓', sub: '散枓'   },
-  'Dou_03-2': { zh: '枓', sub: '散枓'   },
-  'Dou_03-3': { zh: '枓', sub: '散枓'   },
-  'Dou_03-4': { zh: '枓', sub: '散枓'   },
-  'Dou_03-5': { zh: '枓', sub: '散枓'   },
-  'Dou_03-6': { zh: '枓', sub: '散枓'   },
-  'Dou_03-7': { zh: '枓', sub: '散枓'   },
-  'Dou_03-8': { zh: '枓', sub: '散枓'   },
-  'Gong_01':  { zh: '栱', sub: '泥道栱' },
-  'Gong_02':  { zh: '栱', sub: '瓜子栱' },
-  'Gong_03':  { zh: '栱', sub: '瓜子栱' },
-  'Gong_04':  { zh: '栱', sub: '慢栱'   },
+  '_01_Lu_Dou':      { zh: '枓',  sub: '櫨枓'   },
+  '_04_Jiao_Hu_Dou': { zh: '枓',  sub: '交互枓' },
+  '_05_Jiao_Hu_Dou': { zh: '枓',  sub: '交互枓' },
+  '_07_Qi_Xin_Dou':  { zh: '枓',  sub: '齊心枓' },
+  '_08_Qi_Xin_Dou':  { zh: '枓',  sub: '齊心枓' },
+  '_13_San_Dou':     { zh: '枓',  sub: '散枓'   },
+  '_14_San_Dou':     { zh: '枓',  sub: '散枓'   },
+  '_15_San_Dou':     { zh: '枓',  sub: '散枓'   },
+  '_16_San_Dou':     { zh: '枓',  sub: '散枓'   },
+  '_17_Jiao_Hu_Dou': { zh: '枓',  sub: '交互枓' },
+  '_18_Jiao_Hu_Dou': { zh: '枓',  sub: '交互枓' },
+  '_19_Qi_Xin_Dou':  { zh: '枓',  sub: '齊心枓' },
+  '_20_Qi_Xin_Dou':  { zh: '枓',  sub: '齊心枓' },
+  '_02_Ni_Dao_Gong': { zh: '栱',  sub: '泥道栱' },
+  '_09_Gua_Zi_Gong': { zh: '栱',  sub: '瓜子栱' },
+  '_10_Gua_Zi_Gong': { zh: '栱',  sub: '瓜子栱' },
+  '_11_Mang_Gong':   { zh: '栱',  sub: '慢栱'   },
+  '_03_Xia_Ang':     { zh: '昂',  sub: '下昂'   },
+  '_06_Fu':          { zh: '栿',  sub: '栿'     },
+  '_12_Shua_Tou':    { zh: '耍頭', sub: '耍頭'  },
+  '_21_Fang':        { zh: '枋',  sub: '枋'     },
+  '_22_Fang':        { zh: '枋',  sub: '枋'     },
+  '_23_Fang':        { zh: '枋',  sub: '枋'     },
+  '_24_Fang':        { zh: '枋',  sub: '枋'     },
 };
 
 // ── Hover system (init after matMap is built) ──
@@ -161,7 +174,7 @@ function initHoverSystem() {
 
 // Fetch X3D, inject into DOM so querySelector works, then init highlight
 const targetScene = document.querySelector('scene');
-fetch('05-5.x3d')
+fetch('05-5-2.x3d')
   .then(r => r.text())
   .then(text => {
     const parser = new DOMParser();
@@ -217,187 +230,233 @@ fetch('05-5.x3d')
 
 
 /* ─────────────────────────────────────────
-   D3 Graph Editor
+   D3 節點圖
 ───────────────────────────────────────── */
 (function () {
   const svg  = d3.select('#graph-svg');
   const hint = document.getElementById('mode-hint');
+  const svgEl = document.getElementById('graph-svg');
 
-  /* ── State ── */
-  let MODE   = 'select';
-  let nodes  = [];
-  let links  = [];
-  let nodeId = 0;
-  let selected = null;
-  let edgeSrc  = null;
+  // ── 狀態 ──
+  let mode     = 'select';   // 'select' | 'node' | 'edge' | 'delete'
+  let nodes    = [];
+  let links    = [];
+  let nodeId   = 0;
+  let selected = null;       // 目前選取的節點或邊
+  let edgeSrc  = null;       // 連邊模式的起點
 
-  /* ── Layers ── */
-  const linkG    = svg.append('g');
-  const nodeG    = svg.append('g');
-  const dragLine = svg.append('line').attr('id', 'drag-line').style('display', 'none');
+  // ── SVG 圖層（由下到上：邊 → 節點 → 拖曳預覽線）──
+  const linkLayer = svg.append('g').attr('class', 'link-layer');
+  const nodeLayer = svg.append('g').attr('class', 'node-layer');
+  const dragLine  = svg.append('line')
+    .attr('id', 'drag-line')
+    .style('display', 'none');
 
-  /* ── Simulation ── */
-  const sim = d3.forceSimulation(nodes)
-    .force('link',    d3.forceLink(links).id(d => d.id).distance(130))
-    .force('charge',  d3.forceManyBody().strength(-320))
-    .force('collide', d3.forceCollide(42))
-    .alphaDecay(0.02)
-    .on('tick', ticked);
-
-  /* ── Keyboard shortcuts ── */
+  // ── 模式切換 ──
   const HINTS = {
-    select: 'V 選取  N 新增節點  E 連接邊  Del 刪除選取',
-    node:   'N 新增節點 — 點擊空白處  |  V 切回選取',
-    edge:   'E 連接邊 — 點起點再點終點  |  Esc 取消',
-    delete: 'Del 刪除 — 點擊節點或邊  |  V 切回選取',
+    select: 'V 選取  N 新增節點  E 連接邊  Del 刪除',
+    node:   'N模式：點空白處新增節點  |  V 返回',
+    edge:   'E模式：點起點 → 點終點  |  Esc 取消',
+    delete: 'Del模式：點節點或邊刪除  |  V 返回',
   };
+
   function setMode(m) {
-    MODE = m; edgeSrc = null; dragLine.style('display', 'none');
+    mode = m;
+    edgeSrc = null;
+    dragLine.style('display', 'none');
     svg.style('cursor', m === 'node' ? 'cell' : 'default');
-    hint.textContent = HINTS[m] || '';
+    hint.textContent = HINTS[m] ?? '';
   }
+
   document.addEventListener('keydown', e => {
-    if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
-    if (e.key === 'v' || e.key === 'V') setMode('select');
-    if (e.key === 'n' || e.key === 'N') setMode('node');
-    if (e.key === 'e' || e.key === 'E') setMode('edge');
-    if (e.key === 'Escape') { edgeSrc = null; dragLine.style('display', 'none'); setMode('select'); }
-    if ((e.key === 'Delete' || e.key === 'Backspace') && selected) deleteSelected();
+    if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+    const k = e.key;
+    if (k === 'v' || k === 'V') setMode('select');
+    if (k === 'n' || k === 'N') setMode('node');
+    if (k === 'e' || k === 'E') setMode('edge');
+    if (k === 'Escape') setMode('select');
+    if ((k === 'Delete' || k === 'Backspace') && selected) removeSelected();
   });
 
-  /* ── SVG background click ── */
-  svg.on('click', function (event) {
-    if (event.target !== this) return;
-    if (MODE === 'node') addNode(event);
-    else deselect();
-    edgeSrc = null; dragLine.style('display', 'none');
-  });
-
-  svg.on('mousemove', function (event) {
-    if (MODE === 'edge' && edgeSrc) {
-      const [x, y] = d3.pointer(event, this);
-      dragLine.attr('x2', x).attr('y2', y);
+  // ── 點擊空白區域 ──
+  svg.on('click', function (ev) {
+    if (ev.target !== this) return;
+    if (mode === 'node') {
+      const [x, y] = d3.pointer(ev, this);
+      addNode(x, y, `節點${nodeId + 1}`);
+    } else {
+      deselect();
     }
+    edgeSrc = null;
+    dragLine.style('display', 'none');
   });
 
-  /* ── CRUD ── */
-  function addNode(event) {
-    const [x, y] = d3.pointer(event, svg.node());
-    nodes.push({ id: ++nodeId, label: `節點${nodeId}`, x, y });
-    restart(); sim.alpha(0.3).restart();
+  // ── 拖曳預覽線跟隨滑鼠 ──
+  svg.on('mousemove', function (ev) {
+    if (mode !== 'edge' || !edgeSrc) return;
+    const [x, y] = d3.pointer(ev, this);
+    dragLine.attr('x2', x).attr('y2', y);
+  });
+
+  // ── 新增節點 ──
+  function addNode(x, y, label, type) {
+    nodes.push({ id: ++nodeId, label: label ?? `節點${nodeId}`, type: type ?? null, x, y });
+    render();
   }
 
-  function deleteSelected() {
+  // ── 刪除選取 ──
+  function removeSelected() {
     if (!selected) return;
     if (selected._type === 'node') {
-      nodes = nodes.filter(d => d !== selected);
+      nodes = nodes.filter(n => n !== selected);
       links = links.filter(l => l.source !== selected && l.target !== selected);
     } else {
       links = links.filter(l => l !== selected);
     }
-    selected = null; restart(); sim.alpha(0.3).restart();
+    selected = null;
+    render();
   }
 
+  // ── 取消選取 ──
   function deselect() {
     selected = null;
-    nodeG.selectAll('.node').classed('selected', false);
-    linkG.selectAll('.link').classed('selected', false);
+    nodeLayer.selectAll('.node').classed('selected', false);
+    linkLayer.selectAll('g.link').classed('selected', false);
     if (window.clearHighlight) window.clearHighlight();
   }
 
-  /* ── Render ── */
+  // ── 渲染 ──
   let linkSel, nodeSel;
 
-  function restart() {
-    /* Links */
-    linkSel = linkG.selectAll('.link')
+  function render() {
+    // 邊：每條邊用 <g> 包兩條線（hit 區 + 顯示線）
+    linkSel = linkLayer.selectAll('.link')
       .data(links, d => `${d.source.id ?? d.source}-${d.target.id ?? d.target}`);
     linkSel.exit().remove();
-    linkSel = linkSel.enter().append('line').attr('class', 'link')
+    const linkEnter = linkSel.enter().append('g').attr('class', 'link')
       .on('click', function (ev, d) {
         ev.stopPropagation();
-        if (MODE === 'delete') { links = links.filter(l => l !== d); restart(); sim.alpha(0.1).restart(); return; }
-        deselect(); d._type = 'link'; selected = d;
+        if (mode === 'delete') {
+          links = links.filter(l => l !== d);
+          render();
+          return;
+        }
+        deselect();
+        d._type = 'link';
+        selected = d;
         d3.select(this).classed('selected', true);
-      })
-      .merge(linkSel);
+      });
+    linkEnter.append('line').attr('class', 'link-hit');   // 寬透明 hit 區
+    linkEnter.append('line').attr('class', 'link-vis');   // 實際顯示線
+    linkSel = linkEnter.merge(linkSel);
 
-    /* Nodes */
-    nodeSel = nodeG.selectAll('.node').data(nodes, d => d.id);
+    // 節點
+    nodeSel = nodeLayer.selectAll('.node').data(nodes, d => d.id);
     nodeSel.exit().remove();
-    const enter = nodeSel.enter().append('g').attr('class', 'node')
-      .call(d3.drag().on('start', dragStart).on('drag', dragged).on('end', dragEnd))
-      .on('click', nodeClick);
-    enter.append('circle').attr('r', 30);
-    enter.append('text').attr('dy', 4).attr('text-anchor', 'middle');
-    nodeSel = enter.merge(nodeSel);
+    const entered = nodeSel.enter().append('g').attr('class', 'node')
+      .call(d3.drag()
+        .on('start', onDragStart)
+        .on('drag',  onDragged)
+        .on('end',   onDragEnd))
+      .on('click', onNodeClick);
+    entered.append('circle').attr('r', 30);
+    entered.append('text').attr('dy', 4).attr('text-anchor', 'middle');
+    nodeSel = entered.merge(nodeSel);
     nodeSel.select('text').text(d => d.label);
-
-    sim.nodes(nodes);
-    sim.force('link').links(links);
-    sim.alpha(0.1).restart();
+    drawPositions();
   }
 
-  function ticked() {
+  function drawPositions() {
     if (!linkSel || !nodeSel) return;
-    linkSel
+    linkSel.selectAll('line')
       .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
       .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
     nodeSel.attr('transform', d => `translate(${d.x},${d.y})`);
   }
 
-  /* ── Node interaction ── */
-  function nodeClick(ev, d) {
+  // ── 節點點擊 ──
+  function onNodeClick(ev, d) {
     ev.stopPropagation();
-    if (MODE === 'delete') {
+
+    if (mode === 'delete') {
       nodes = nodes.filter(n => n !== d);
       links = links.filter(l => l.source !== d && l.target !== d);
-      selected = null; restart(); sim.alpha(0.3).restart(); return;
+      selected = null;
+      render();
+      return;
     }
-    if (MODE === 'edge') {
+
+    if (mode === 'edge') {
       if (!edgeSrc) {
         edgeSrc = d;
-        dragLine.style('display', null).attr('x1', d.x).attr('y1', d.y).attr('x2', d.x).attr('y2', d.y);
+        dragLine.style('display', null)
+          .attr('x1', d.x).attr('y1', d.y)
+          .attr('x2', d.x).attr('y2', d.y);
       } else if (edgeSrc !== d) {
         const dup = links.some(l =>
-          (l.source === edgeSrc && l.target === d) || (l.source === d && l.target === edgeSrc));
+          (l.source === edgeSrc && l.target === d) ||
+          (l.source === d       && l.target === edgeSrc));
         if (!dup) links.push({ source: edgeSrc, target: d, _type: 'link' });
-        edgeSrc = null; dragLine.style('display', 'none');
-        restart(); sim.alpha(0.3).restart();
+        edgeSrc = null;
+        dragLine.style('display', 'none');
+        render();
       }
       return;
     }
-    deselect(); d._type = 'node'; selected = d;
+
+    // select 模式
+    deselect();
+    d._type = 'node';
+    selected = d;
     d3.select(this).classed('selected', true);
     if (window.highlightType && d.type) window.highlightType(d.type);
   }
 
-  function dragStart(ev, d) {
-    if (MODE === 'edge') return;
-    if (!ev.active) sim.alphaTarget(0.3).restart();
-    d.fx = d.x; d.fy = d.y;
-  }
-  function dragged(ev, d) {
-    if (MODE === 'edge') return;
-    d.fx = ev.x; d.fy = ev.y;
-  }
-  function dragEnd(ev, d) {
-    if (MODE === 'edge') return;
-    if (!ev.active) sim.alphaTarget(0);
-    d.fx = null; d.fy = null;
+  // ── 拖曳 ──
+  function onDragStart(_ev, d) {
+    if (mode === 'edge') return;
+    d.fx = d.x;
+    d.fy = d.y;
   }
 
-  /* ── Seed: 枓 / 栱 ── */
-  const svgEl = document.getElementById('graph-svg');
-  const w = svgEl.clientWidth  || 200;
-  const h = svgEl.clientHeight || 600;
-  const r = Math.min(w, h) * 0.28;
-  [{ label: '枓', type: '枓' }, { label: '栱', type: '栱' }].forEach((s, i) => {
-    const a = (i / 2) * 2 * Math.PI;
-    nodes.push({ id: ++nodeId, label: s.label, type: s.type,
-                 x: w / 2 + r * Math.cos(a), y: h / 2 + r * Math.sin(a) });
+  function onDragged(ev, d) {
+    if (mode === 'edge') return;
+    d.x = d.fx = ev.x;
+    d.y = d.fy = ev.y;
+    drawPositions();
+  }
+
+  function onDragEnd(_ev, d) {
+    if (mode === 'edge') return;
+    d.fx = null;
+    d.fy = null;
+  }
+
+  // ── 初始節點（六種構件）──
+  const W = svgEl.clientWidth  || 200;
+  const H = svgEl.clientHeight || 600;
+  const R = Math.min(W, H) * 0.30;
+
+  const SEEDS = [
+    { label: '枓',  type: '枓'  },
+    { label: '栱',  type: '栱'  },
+    { label: '昂',  type: '昂'  },
+    { label: '栿',  type: '栿'  },
+    { label: '耍頭', type: '耍頭' },
+    { label: '枋',  type: '枋'  },
+  ];
+
+  SEEDS.forEach((s, i) => {
+    const angle = (i / SEEDS.length) * 2 * Math.PI - Math.PI / 2;
+    nodes.push({
+      id: ++nodeId,
+      label: s.label,
+      type:  s.type,
+      x: W / 2 + R * Math.cos(angle),
+      y: H / 2 + R * Math.sin(angle),
+    });
   });
-  links.push({ source: nodes[0], target: nodes[1], _type: 'link' });
-  restart();
+
+  render();
   setMode('select');
 })();
