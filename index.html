@@ -150,11 +150,20 @@
   <div id="left-panel">
     <x3d id="x3d">
       <scene>
-        <navigationInfo type="EXAMINE" headlight="true" speed="4"></navigationInfo>
-        <viewpoint position="0 -10 50" orientation="0 0 0 0" fieldOfView="0.6"></viewpoint>
+        <navigationInfo type="EXAMINE" headlight="true" speed="1"></navigationInfo>
+        <viewpoint position="0 -12 50" orientation="0 0 0 0" fieldOfView="0.6"></viewpoint>
         <background skyColor="0.75 0.75 0.75"></background>
 
         <Environment SSAO="true" SSAOradius="0.5"></Environment>
+
+        <transform translation="0 -20 0">
+          <shape>
+            <appearance>
+              <material diffuseColor="0.35 0.35 0.35" transparency="0.88"></material>
+            </appearance>
+            <box size="1000 0.01 1000"></box>
+          </shape>
+        </transform>
 
         <!-- geometry injected by fetch below -->
       </scene>

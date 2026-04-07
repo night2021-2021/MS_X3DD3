@@ -31,6 +31,90 @@ const TYPE_DEFS = {
   '耍頭': ['_12_Shua_Tou'],
   '枋': ['_21_Fang', '_22_Fang', '_23_Fang', '_24_Fang'],
 };
+// ── 各構件組裝後的正確位置（從 x3d 讀取）──
+const ASSEMBLED_POS = {
+  '_01_Lu_Dou':      [ 0.146537, -0.442880, -0.158859],
+  '_02_Ni_Dao_Gong': [-0.063462, -0.322880, -0.308859],
+  '_03_Xia_Ang':     [ 0.236537, -0.322880, -0.048858],
+  '_04_Jiao_Hu_Dou': [-0.233463, -0.172880, -0.088859],
+  '_05_Jiao_Hu_Dou': [ 0.206537, -0.172880,  0.091141],
+  '_06_Fu':          [-0.673463,  0.097120, -0.048858],
+  '_07_Qi_Xin_Dou':  [-0.093463, -0.172880,  0.331142],
+  '_08_Qi_Xin_Dou':  [-0.093463, -0.172880, -0.188859],
+  '_09_Gua_Zi_Gong': [-0.363463, -0.112880, -0.358859],
+  '_10_Gua_Zi_Gong': [ 0.236537, -0.112880, -0.358859],
+  '_11_Mang_Gong':   [-0.063462, -0.112880, -0.458859],
+  '_12_Shua_Tou':    [-0.212434, -0.112880,  0.051142],
+  '_13_San_Dou':     [ 0.206537,  0.037120, -0.238859],
+  '_14_San_Dou':     [-0.393463,  0.037120, -0.238859],
+  '_15_San_Dou':     [-0.393463,  0.037120,  0.381142],
+  '_16_San_Dou':     [ 0.206537,  0.037120,  0.381142],
+  '_17_Jiao_Hu_Dou': [-0.393463,  0.037120,  0.091142],
+  '_18_Jiao_Hu_Dou': [ 0.366537,  0.037120, -0.088858],
+  '_19_Qi_Xin_Dou':  [-0.093463,  0.037120,  0.481141],
+  '_20_Qi_Xin_Dou':  [-0.093463,  0.037120, -0.338858],
+  '_21_Fang':        [-0.063463,  0.307120,  0.481142],
+  '_22_Fang':        [-0.263463,  0.097120,  0.381141],
+  '_23_Fang':        [-0.063463,  0.097120,  0.281142],
+  '_24_Fang':        [ 0.336537,  0.097120, -0.277692],
+};
+
+// ── 各類型的固定散落偏移量（x, y, z）──
+const SCATTER_OFFSET = {
+  '枓':  [ 2.0,  0.0,  0.0],
+  '栱':  [-2.0,  0.0,  0.0],
+  '昂':  [ 0.0,  0.0,  2.0],
+  '栿':  [ 0.0,  0.0, -2.0],
+  '耍頭': [ 1.5,  0.0,  1.5],
+  '枋':  [ 0.0,  1.5,  0.0],
+};
+
+// ── 動畫系統 ──
+const _animCur  = {};   // defName → [x, y, z] 目前動畫位置
+const _animRaf  = {};   // defName → requestAnimationFrame handle
+
+function _animateTo(defName, target, duration = 1400) {
+  const tr = document.querySelector(`[DEF="${defName}_TRANSFORM"]`);
+  if (!tr) return;
+
+  const orig = ASSEMBLED_POS[defName] || [0, 0, 0];
+  const cur  = (_animCur[defName] || orig).slice();
+  const t0   = performance.now();
+
+  if (_animRaf[defName]) cancelAnimationFrame(_animRaf[defName]);
+
+  function step(now) {
+    const p = Math.min((now - t0) / duration, 1);
+    const e = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p;  // ease-in-out quad
+    const pos = [
+      cur[0] + (target[0] - cur[0]) * e,
+      cur[1] + (target[1] - cur[1]) * e,
+      cur[2] + (target[2] - cur[2]) * e,
+    ];
+    tr.setAttribute('translation', pos.map(v => v.toFixed(6)).join(' '));
+    _animCur[defName] = pos;
+    if (p < 1) _animRaf[defName] = requestAnimationFrame(step);
+  }
+  _animRaf[defName] = requestAnimationFrame(step);
+}
+
+window.assembleType = function (type) {
+  (TYPE_DEFS[type] || []).forEach(name => {
+    if (ASSEMBLED_POS[name]) _animateTo(name, ASSEMBLED_POS[name]);
+  });
+};
+
+const SCATTER_Y = -0.8;  // 所有散落構件的統一高度
+
+window.scatterType = function (type) {
+  const off = SCATTER_OFFSET[type] || [0, 0, 0];
+  (TYPE_DEFS[type] || []).forEach(name => {
+    const orig = ASSEMBLED_POS[name];
+    if (!orig) return;
+    _animateTo(name, [orig[0] + off[0], SCATTER_Y, orig[2] + off[2]]);
+  });
+};
+
 const ORIG_DIFFUSE = '0.45 0.28 0.14';
 const ORIG_SPEC    = '0.22 0.14 0.07';
 const HI_DIFFUSE   = '1.0 0.55 0.05';
@@ -191,7 +275,12 @@ fetch('05-5-2.x3d')
       if (!skip) wrapper.appendChild(document.importNode(child, true));
     });
     targetScene.appendChild(wrapper);
-    setTimeout(() => { initHighlightSystem(); initHoverSystem(); }, 300);
+    setTimeout(() => {
+      initHighlightSystem();
+      initHoverSystem();
+      // 初始：所有構件散落
+      Object.keys(TYPE_DEFS).forEach(type => window.scatterType(type));
+    }, 300);
   })
   .catch(err => console.error('X3D load failed:', err));
 
@@ -315,6 +404,18 @@ fetch('05-5-2.x3d')
     }
     selected = null;
     render();
+    syncAssembly();
+  }
+
+  // ── 同步組裝狀態：有連結 → 歸位，無連結 → 散落 ──
+  function syncAssembly() {
+    if (!window.assembleType) return;
+    nodes.forEach(node => {
+      if (!node.type) return;
+      const connected = links.some(l => l.source === node || l.target === node);
+      if (connected) window.assembleType(node.type);
+      else           window.scatterType(node.type);
+    });
   }
 
   // ── 取消選取 ──
@@ -339,6 +440,7 @@ fetch('05-5-2.x3d')
         if (mode === 'delete') {
           links = links.filter(l => l !== d);
           render();
+          syncAssembly();
           return;
         }
         deselect();
@@ -383,6 +485,7 @@ fetch('05-5-2.x3d')
       links = links.filter(l => l.source !== d && l.target !== d);
       selected = null;
       render();
+      syncAssembly();
       return;
     }
 
@@ -400,6 +503,7 @@ fetch('05-5-2.x3d')
         edgeSrc = null;
         dragLine.style('display', 'none');
         render();
+        syncAssembly();
       }
       return;
     }
