@@ -26,7 +26,7 @@ const TYPE_DEFS = {
          '_17_Jiao_Hu_Dou', '_18_Jiao_Hu_Dou',
          '_19_Qi_Xin_Dou',  '_20_Qi_Xin_Dou'],
   '栱': ['_02_Ni_Dao_Gong', '_09_Gua_Zi_Gong', '_10_Gua_Zi_Gong', '_11_Mang_Gong'],
-  '昂': ['_03_Xia_Ang'],
+  '昂': ['_03_Xia_Ang', '_25_XiaAng'],
   '栿': ['_06_Fu'],
   '耍頭': ['_12_Shua_Tou'],
   '枋': ['_21_Fang', '_22_Fang', '_23_Fang', '_24_Fang'],
@@ -36,6 +36,7 @@ const ASSEMBLED_POS = {
   '_01_Lu_Dou':      [ 0.146537, -0.442880, -0.158859],
   '_02_Ni_Dao_Gong': [-0.063462, -0.322880, -0.308859],
   '_03_Xia_Ang':     [ 0.236537, -0.322880, -0.048858],
+  '_25_XiaAng':      [-2.439805, -3.024306, -4.114415],
   '_04_Jiao_Hu_Dou': [-0.233463, -0.172880, -0.088859],
   '_05_Jiao_Hu_Dou': [ 0.206537, -0.172880,  0.091141],
   '_06_Fu':          [-0.673463,  0.097120, -0.048858],
@@ -70,6 +71,11 @@ const SCATTER_OFFSET = {
 };
 
 // ── 動畫系統 ──
+const SCATTER_OFFSET_BY_DEF = {
+  '_03_Xia_Ang': [0.0, 0.0, 1.2],
+  '_25_XiaAng':  [-0.25, 0.0, 1.5],
+};
+
 const _animCur  = {};   // defName → [x, y, z] 目前動畫位置
 const _animRaf  = {};   // defName → requestAnimationFrame handle
 
@@ -105,13 +111,18 @@ window.assembleType = function (type) {
 };
 
 const SCATTER_Y = -0.8;  // 所有散落構件的統一高度
+const SCATTER_Y_BY_DEF = {
+  '_25_XiaAng': -3.56,
+};
 
 window.scatterType = function (type) {
   const off = SCATTER_OFFSET[type] || [0, 0, 0];
   (TYPE_DEFS[type] || []).forEach(name => {
     const orig = ASSEMBLED_POS[name];
     if (!orig) return;
-    _animateTo(name, [orig[0] + off[0], SCATTER_Y, orig[2] + off[2]]);
+    const defOff = SCATTER_OFFSET_BY_DEF[name] ?? off;
+    const y = SCATTER_Y_BY_DEF[name] ?? SCATTER_Y;
+    _animateTo(name, [orig[0] + defOff[0], y, orig[2] + defOff[2]]);
   });
 };
 
@@ -147,6 +158,12 @@ function initHighlightSystem() {
         app.replaceChild(newMat, mat);
         owned.push(newMat);
       } else {
+        mat.setAttribute('diffuseColor',      ORIG_DIFFUSE);
+        mat.setAttribute('specularColor',      ORIG_SPEC);
+        mat.setAttribute('emissiveColor',      '0 0 0');
+        mat.setAttribute('ambientIntensity',   '0');
+        mat.setAttribute('shininess',          '0.5');
+        mat.setAttribute('transparency',       '0');
         owned.push(mat);
       }
     });
@@ -208,6 +225,7 @@ const DEF_LABELS = {
   '_10_Gua_Zi_Gong': { zh: '栱',  sub: '瓜子栱' },
   '_11_Mang_Gong':   { zh: '栱',  sub: '慢栱'   },
   '_03_Xia_Ang':     { zh: '昂',  sub: '下昂'   },
+  '_25_XiaAng':      { zh: '昂',  sub: '下昂'   },
   '_06_Fu':          { zh: '栿',  sub: '栿'     },
   '_12_Shua_Tou':    { zh: '耍頭', sub: '耍頭'  },
   '_21_Fang':        { zh: '枋',  sub: '枋'     },
@@ -258,7 +276,7 @@ function initHoverSystem() {
 
 // Fetch X3D, inject into DOM so querySelector works, then init highlight
 const targetScene = document.querySelector('scene');
-fetch('05-5-2.x3d')
+fetch('05-5-1.x3d')
   .then(r => r.text())
   .then(text => {
     const parser = new DOMParser();
