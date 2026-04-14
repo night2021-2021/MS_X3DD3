@@ -39,6 +39,85 @@
       display: block;
     }
 
+    #model-bottom-bar {
+      position: absolute;
+      left: 50%;
+      bottom: 18px;
+      width: 34%;
+      max-width: 300px;
+      min-width: 150px;
+      height: 12px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: rgba(90, 90, 90, 0.78);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+      transition: background 0.18s ease, box-shadow 0.18s ease;
+      z-index: 5;
+      cursor: pointer;
+    }
+
+    #model-bottom-bar:hover {
+      background: rgba(135, 135, 135, 0.9);
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.28);
+    }
+
+    #model-bottom-bar:focus-visible {
+      outline: 2px solid rgba(255, 255, 255, 0.75);
+      outline-offset: 5px;
+    }
+
+    #feature-lights {
+      position: absolute;
+      left: 50%;
+      bottom: 44px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 13px;
+      transform: translate(-50%, 10px);
+      border-radius: 18px;
+      background: rgba(28, 28, 32, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      z-index: 6;
+    }
+
+    #feature-lights.is-open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, 0);
+    }
+
+    .feature-light {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.36),
+                  0 2px 8px rgba(0, 0, 0, 0.28);
+    }
+
+    .feature-light:focus-visible {
+      outline: 2px solid rgba(255, 255, 255, 0.75);
+      outline-offset: 4px;
+    }
+
+    .feature-light.is-active {
+      box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.45),
+                  0 0 0 3px rgba(255, 255, 255, 0.42),
+                  0 3px 10px rgba(0, 0, 0, 0.32);
+    }
+
+    .feature-light:nth-child(1) { background: #e35d5d; }
+    .feature-light:nth-child(2) { background: #e8c755; }
+    .feature-light:nth-child(3) { background: #62c76b; }
+    .feature-light:nth-child(4) { background: #55a7e8; }
+    .feature-light:nth-child(5) { background: #b875e8; }
+
     /* ── Resizer ── */
     #resizer {
       flex: none;
@@ -47,8 +126,14 @@
       background: #555;
       transition: background .15s;
       z-index: 10;
+      touch-action: none;
     }
     #resizer:hover, #resizer.dragging { background: #aaa; }
+
+    body.resizing #x3d,
+    body.resizing #graph-svg {
+      pointer-events: none;
+    }
 
     /* ── Right: D3 graph ── */
     #right-panel {
@@ -156,7 +241,7 @@
 
         <Environment SSAO="true" SSAOradius="0.5"></Environment>
 
-        <transform translation="0 -20 0">
+        <transform id="model-ground-plane" translation="0 -20 0">
           <shape>
             <appearance>
               <material diffuseColor="0.35 0.35 0.35" transparency="0.88"></material>
@@ -168,6 +253,14 @@
         <!-- geometry injected by fetch below -->
       </scene>
     </x3d>
+    <div id="feature-lights" aria-hidden="true">
+      <span class="feature-light" role="button" tabindex="0" data-feature="unit-grid" title="6x6x6 立方格線"></span>
+      <span class="feature-light" role="button" tabindex="0" data-feature="axis-markers" title="XYZ 軸標記"></span>
+      <span class="feature-light" role="button" tabindex="0" data-feature="ground-projection" title="地面投影"></span>
+      <span class="feature-light" role="button" tabindex="0" data-feature="ground-projection-copy" title="剖面空區"></span>
+      <span class="feature-light" role="button" tabindex="0" data-feature="feature-five" title="功能 5"></span>
+    </div>
+    <div id="model-bottom-bar" role="button" tabindex="0" aria-label="功能選單" aria-expanded="false"></div>
   </div>
 
   <!-- Resizer -->

@@ -14,10 +14,769 @@
   new MutationObserver(clean).observe(document.body, { childList: true, subtree: true });
 })();
 
+/* ─────────────────────────────────────────
+   Model bottom feature lights
+───────────────────────────────────────── */
+let activeDimensionFeature = null;
+
+function setActiveDimensionFeature(feature) {
+  activeDimensionFeature = feature;
+  document.querySelectorAll('.feature-light').forEach(light => {
+    light.classList.toggle('is-active', light.dataset.feature === feature);
+  });
+}
+
+function isDimensionFeatureVisible(feature) {
+  const featureElementIds = {
+    'unit-grid': 'unit-cube-grid',
+    'axis-markers': 'xyz-axis-markers',
+    'ground-projection': 'ground-projection',
+    'ground-projection-copy': 'ground-projection-copy',
+  };
+
+  return feature === 'feature-five' ? activeDimensionFeature === feature : !!document.getElementById(featureElementIds[feature]);
+}
+
+function clearDimensionFeatures() {
+  ['unit-cube-grid', 'xyz-axis-markers', 'ground-projection', 'ground-projection-copy'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  });
+
+  clearSectionVisibility();
+  setGroundProjectionSelected(false);
+  setGroundProjectionHovered(false);
+  setGroundProjectionCopySelected(false);
+  setGroundProjectionCopyHovered(false);
+  setActiveDimensionFeature(null);
+}
+
+function activateDimensionFeature(feature) {
+  if (feature === 'unit-grid') toggleUnitGrid();
+  if (feature === 'axis-markers') toggleAxisMarkers();
+  if (feature === 'ground-projection') toggleGroundProjection();
+  if (feature === 'ground-projection-copy') toggleGroundProjectionCopy();
+  if (feature === 'feature-five' && window.x3dom) x3dom.reload();
+  setActiveDimensionFeature(feature);
+}
+
+(function initFeatureLights() {
+  const bar = document.getElementById('model-bottom-bar');
+  const lights = document.getElementById('feature-lights');
+  if (!bar || !lights) return;
+
+  function setOpen(open) {
+    lights.classList.toggle('is-open', open);
+    lights.setAttribute('aria-hidden', String(!open));
+    bar.setAttribute('aria-expanded', String(open));
+  }
+
+  function toggleLights(e) {
+    e.stopPropagation();
+    setOpen(!lights.classList.contains('is-open'));
+  }
+
+  function handleFeature(e) {
+    const light = e.target.closest('.feature-light');
+    const feature = light && light.dataset.feature;
+    if (!feature) return;
+    e.stopPropagation();
+
+    const wasActive = activeDimensionFeature === feature || isDimensionFeatureVisible(feature);
+    clearDimensionFeatures();
+
+    if (!wasActive) {
+      activateDimensionFeature(feature);
+    } else if (window.x3dom) {
+      x3dom.reload();
+    }
+  }
+
+  function handleFeatureKey(e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const light = e.target.closest('.feature-light');
+    if (!light) return;
+    e.preventDefault();
+    handleFeature(e);
+  }
+
+  bar.addEventListener('click', toggleLights);
+  bar.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    toggleLights(e);
+  });
+
+  lights.addEventListener('click', e => e.stopPropagation());
+  lights.addEventListener('click', handleFeature);
+  lights.addEventListener('keydown', handleFeatureKey);
+  document.addEventListener('click', () => setOpen(false));
+})();
+
+function toggleUnitGrid() {
+  const existing = document.getElementById('unit-cube-grid');
+  if (existing) {
+    existing.remove();
+    if (window.x3dom) x3dom.reload();
+    return;
+  }
+
+  const scene = document.querySelector('scene');
+  if (!scene) return;
+
+  const cells = 6;
+  const cellSize = 2;
+  const half = (cells * cellSize) / 2;
+  const points = [];
+  const pointIndex = new Map();
+  const segments = [];
+
+  function getPointIndex(x, y, z) {
+    const key = `${x},${y},${z}`;
+    if (!pointIndex.has(key)) {
+      pointIndex.set(key, points.length);
+      points.push(`${x * cellSize - half} ${y * cellSize} ${z * cellSize - half}`);
+    }
+    return pointIndex.get(key);
+  }
+
+  function addSegment(a, b) {
+    segments.push(`${a} ${b} -1`);
+  }
+
+  for (let x = 0; x <= cells; x++) {
+    for (let y = 0; y <= cells; y++) {
+      for (let z = 0; z < cells; z++) {
+        addSegment(getPointIndex(x, y, z), getPointIndex(x, y, z + 1));
+      }
+    }
+  }
+
+  for (let x = 0; x <= cells; x++) {
+    for (let z = 0; z <= cells; z++) {
+      for (let y = 0; y < cells; y++) {
+        addSegment(getPointIndex(x, y, z), getPointIndex(x, y + 1, z));
+      }
+    }
+  }
+
+  for (let y = 0; y <= cells; y++) {
+    for (let z = 0; z <= cells; z++) {
+      for (let x = 0; x < cells; x++) {
+        addSegment(getPointIndex(x, y, z), getPointIndex(x + 1, y, z));
+      }
+    }
+  }
+
+  const transform = document.createElement('transform');
+  transform.id = 'unit-cube-grid';
+  transform.setAttribute('translation', '0 -16 0');
+
+  const shape = document.createElement('shape');
+  const appearance = document.createElement('appearance');
+  const material = document.createElement('material');
+  const lineSet = document.createElement('indexedLineSet');
+  const coordinate = document.createElement('coordinate');
+
+  material.setAttribute('emissiveColor', '0 0 0');
+  material.setAttribute('diffuseColor', '0 0 0');
+  lineSet.setAttribute('coordIndex', segments.join(' '));
+  coordinate.setAttribute('point', points.join(' '));
+
+  appearance.appendChild(material);
+  lineSet.appendChild(coordinate);
+  shape.appendChild(appearance);
+  shape.appendChild(lineSet);
+  transform.appendChild(shape);
+  scene.appendChild(transform);
+  if (window.x3dom) x3dom.reload();
+}
+
 
 /* ─────────────────────────────────────────
    Highlight system: connect D3 nodes to X3D shapes
 ───────────────────────────────────────── */
+function toggleAxisMarkers() {
+  const existing = document.getElementById('xyz-axis-markers');
+  if (existing) {
+    existing.remove();
+    if (window.x3dom) x3dom.reload();
+    return;
+  }
+
+  const scene = document.querySelector('scene');
+  if (!scene) return;
+
+  const group = document.createElement('transform');
+  group.id = 'xyz-axis-markers';
+  group.setAttribute('translation', '0 -16 0');
+
+  function createMaterial(color) {
+    const appearance = document.createElement('appearance');
+    const material = document.createElement('material');
+    material.setAttribute('diffuseColor', color);
+    material.setAttribute('emissiveColor', color);
+    appearance.appendChild(material);
+    return appearance;
+  }
+
+  function addCylinder(parent, translation, rotation, height, color) {
+    const transform = document.createElement('transform');
+    const shape = document.createElement('shape');
+    const cylinder = document.createElement('cylinder');
+
+    transform.setAttribute('translation', translation);
+    if (rotation) transform.setAttribute('rotation', rotation);
+    cylinder.setAttribute('radius', '0.04');
+    cylinder.setAttribute('height', String(height));
+
+    shape.appendChild(createMaterial(color));
+    shape.appendChild(cylinder);
+    transform.appendChild(shape);
+    parent.appendChild(transform);
+  }
+
+  function addSphere(parent, translation, color) {
+    const transform = document.createElement('transform');
+    const shape = document.createElement('shape');
+    const sphere = document.createElement('sphere');
+
+    transform.setAttribute('translation', translation);
+    sphere.setAttribute('radius', '0.18');
+
+    shape.appendChild(createMaterial(color));
+    shape.appendChild(sphere);
+    transform.appendChild(shape);
+    parent.appendChild(transform);
+  }
+
+  const length = 12;
+  const half = length / 2;
+  const step = 2;
+  const xzHalf = half + step;
+  const xzLength = xzHalf * 2;
+  const red = '0.9 0.05 0.05';
+  const green = '0.05 0.7 0.15';
+  const blue = '0.05 0.25 0.95';
+
+  addCylinder(group, '0 0 0', '0 0 1 1.5708', xzLength, red);
+  addCylinder(group, `0 ${half} 0`, null, length, green);
+  addCylinder(group, '0 0 0', '1 0 0 1.5708', xzLength, blue);
+
+  for (let value = -xzHalf; value <= xzHalf; value += step) {
+    addSphere(group, `${value} 0 0`, red);
+    addSphere(group, `0 0 ${value}`, blue);
+  }
+
+  for (let value = 0; value <= length; value += step) {
+    addSphere(group, `0 ${value} 0`, green);
+  }
+
+  scene.appendChild(group);
+  if (window.x3dom) x3dom.reload();
+}
+
+let groundProjectionY = -16.02;
+let groundProjectionSelected = false;
+let groundProjectionHovered = false;
+
+function formatGroundProjectionY() {
+  return groundProjectionY.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function updateGroundProjectionY() {
+  const projection = document.getElementById('ground-projection');
+  if (!projection) return;
+
+  projection.setAttribute('translation', `0 ${groundProjectionY} 0`);
+
+  const label = document.getElementById('ground-projection-y-label-text');
+  if (label) label.setAttribute('string', `"y=${formatGroundProjectionY()}"`);
+}
+
+function setGroundProjectionSelected(selected) {
+  groundProjectionSelected = selected;
+  if (selected && typeof setGroundProjectionCopySelected === 'function') {
+    setGroundProjectionCopySelected(false);
+  }
+  updateGroundProjectionMaterial();
+}
+
+function setGroundProjectionHovered(hovered) {
+  groundProjectionHovered = hovered;
+  updateGroundProjectionMaterial();
+}
+
+function updateGroundProjectionMaterial() {
+  const planeMaterial = document.getElementById('ground-projection-plane-material');
+  if (planeMaterial) {
+    let diffuse = '0.2 0.2 0.2';
+    let emissive = '0.2 0.2 0.2';
+    let transparency = '0.76';
+
+    if (groundProjectionHovered) {
+      diffuse = '0.42 0.42 0.42';
+      emissive = '0.16 0.16 0.16';
+      transparency = '0.62';
+    }
+
+    planeMaterial.setAttribute('diffuseColor', diffuse);
+    planeMaterial.setAttribute('emissiveColor', emissive);
+    planeMaterial.setAttribute('transparency', transparency);
+  }
+}
+
+window.pickGroundProjection = function (e) {
+  if (e) e.stopPropagation();
+  const now = Date.now();
+  if (window.pickGroundProjection.lastPickAt && now - window.pickGroundProjection.lastPickAt < 250) return;
+  window.pickGroundProjection.lastPickAt = now;
+  setGroundProjectionSelected(!groundProjectionSelected);
+};
+
+window.hoverGroundProjection = function (e) {
+  if (e) e.stopPropagation();
+  setGroundProjectionHovered(true);
+};
+
+window.unhoverGroundProjection = function (e) {
+  if (e) e.stopPropagation();
+  setGroundProjectionHovered(false);
+};
+
+(function initGroundProjectionWheel() {
+  const x3dEl = document.getElementById('x3d');
+  if (!x3dEl) return;
+
+  x3dEl.addEventListener('wheel', e => {
+    if (!groundProjectionSelected || !document.getElementById('ground-projection')) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    groundProjectionY += e.deltaY < 0 ? 0.25 : -0.25;
+    updateGroundProjectionY();
+  }, { capture: true, passive: false });
+})();
+
+function toggleGroundProjection() {
+  const existing = document.getElementById('ground-projection');
+  if (existing) {
+    existing.remove();
+    setGroundProjectionSelected(false);
+    setGroundProjectionHovered(false);
+    if (window.x3dom) x3dom.reload();
+    return;
+  }
+
+  const scene = document.querySelector('scene');
+  if (!scene) return;
+
+  const size = 12;
+  const half = size / 2;
+  const step = 2;
+  const group = document.createElement('transform');
+  group.id = 'ground-projection';
+  group.setAttribute('translation', `0 ${groundProjectionY} 0`);
+  function createMaterial(color, transparency = '0') {
+    const appearance = document.createElement('appearance');
+    const material = document.createElement('material');
+    material.setAttribute('diffuseColor', color);
+    material.setAttribute('emissiveColor', color);
+    material.setAttribute('transparency', transparency);
+    appearance.appendChild(material);
+    return appearance;
+  }
+
+  function addGroundLabel(textValue, translation, id = '') {
+    const transform = document.createElement('transform');
+    const shape = document.createElement('shape');
+    const text = document.createElement('text');
+    const fontStyle = document.createElement('fontStyle');
+
+    transform.setAttribute('translation', translation);
+    transform.setAttribute('rotation', '1 0 0 -1.5708');
+    if (id) text.id = id;
+    text.setAttribute('string', `"${textValue}"`);
+    fontStyle.setAttribute('size', '0.45');
+    fontStyle.setAttribute('family', '"Times New Roman"');
+    fontStyle.setAttribute('justify', '"MIDDLE" "MIDDLE"');
+
+    text.appendChild(fontStyle);
+    shape.appendChild(createMaterial('0 0 0'));
+    shape.appendChild(text);
+    transform.appendChild(shape);
+    group.appendChild(transform);
+  }
+
+  const planeTransform = document.createElement('transform');
+  const planeShape = document.createElement('shape');
+  const plane = document.createElement('box');
+  const planeAppearance = createMaterial('0.2 0.2 0.2', '0.76');
+  const planeMaterial = planeAppearance.querySelector('material');
+  planeMaterial.id = 'ground-projection-plane-material';
+
+  planeTransform.setAttribute('translation', '0 -0.02 0');
+  plane.setAttribute('size', `${size} 0.04 ${size}`);
+  planeShape.appendChild(planeAppearance);
+  planeShape.appendChild(plane);
+  planeTransform.appendChild(planeShape);
+  group.appendChild(planeTransform);
+
+  const pickTransform = document.createElement('transform');
+  const pickShape = document.createElement('shape');
+  const pickAppearance = document.createElement('appearance');
+  const pickMaterial = document.createElement('material');
+  const pickBox = document.createElement('box');
+  pickTransform.setAttribute('translation', '0 0.04 0');
+  pickShape.setAttribute('onclick', 'window.pickGroundProjection(event)');
+  pickShape.setAttribute('onmousedown', 'window.pickGroundProjection(event)');
+  pickShape.setAttribute('onmouseover', 'window.hoverGroundProjection(event)');
+  pickShape.setAttribute('onmouseout', 'window.unhoverGroundProjection(event)');
+  pickMaterial.setAttribute('diffuseColor', '1 1 1');
+  pickMaterial.setAttribute('transparency', '0.98');
+  pickAppearance.appendChild(pickMaterial);
+  pickBox.setAttribute('size', `${size} 0.12 ${size}`);
+  pickShape.appendChild(pickAppearance);
+  pickShape.appendChild(pickBox);
+  pickTransform.appendChild(pickShape);
+  group.appendChild(pickTransform);
+
+  const linePoints = [
+    `${-half} 0 ${-half}`, `${half} 0 ${-half}`,
+    `${half} 0 ${-half}`, `${half} 0 ${half}`,
+    `${half} 0 ${half}`, `${-half} 0 ${half}`,
+    `${-half} 0 ${half}`, `${-half} 0 ${-half}`,
+    `${-half} 0 0`, `${half} 0 0`,
+    `0 0 ${-half}`, `0 0 ${half}`,
+  ];
+  const lineSegments = [];
+
+  for (let i = 0; i < linePoints.length; i += 2) {
+    lineSegments.push(`${i} ${i + 1} -1`);
+  }
+
+  for (let value = -half; value <= half; value += step) {
+    const xTickStart = linePoints.length;
+    linePoints.push(`${value} 0 ${-half}`, `${value} 0 ${-half - 0.45}`);
+    lineSegments.push(`${xTickStart} ${xTickStart + 1} -1`);
+
+    const zTickStart = linePoints.length;
+    linePoints.push(`${-half} 0 ${value}`, `${-half - 0.45} 0 ${value}`);
+    lineSegments.push(`${zTickStart} ${zTickStart + 1} -1`);
+
+    addGroundLabel(value, `${value} 0 ${-half - 0.95}`);
+    addGroundLabel(value, `${-half - 0.95} 0 ${value}`);
+  }
+
+  const lineShape = document.createElement('shape');
+  const lineSet = document.createElement('indexedLineSet');
+  const lineCoords = document.createElement('coordinate');
+  lineSet.setAttribute('coordIndex', lineSegments.join(' '));
+  lineCoords.setAttribute('point', linePoints.join(' '));
+  lineSet.appendChild(lineCoords);
+  lineShape.appendChild(createMaterial('0 0 0'));
+  lineShape.appendChild(lineSet);
+  group.appendChild(lineShape);
+
+  addGroundLabel(`y=${formatGroundProjectionY()}`, `${half + 1.35} 0 ${half + 0.75}`, 'ground-projection-y-label-text');
+
+  scene.appendChild(group);
+  setGroundProjectionSelected(false);
+  setGroundProjectionHovered(false);
+  if (window.x3dom) x3dom.reload();
+}
+
+function addSectionVoidToGroup(group, size, half, createMaterial) {
+  const points = [
+    `${-half} 0 ${-half}`, `${half} 0 ${-half}`, `${half} 0 ${half}`, `${-half} 0 ${half}`,
+  ];
+  const segments = [
+    '0 1 -1', '1 2 -1', '2 3 -1', '3 0 -1',
+  ];
+  const edgeShape = document.createElement('shape');
+  const edgeSet = document.createElement('indexedLineSet');
+  const edgeCoords = document.createElement('coordinate');
+  edgeSet.setAttribute('coordIndex', segments.join(' '));
+  edgeCoords.setAttribute('point', points.join(' '));
+  edgeSet.appendChild(edgeCoords);
+  edgeShape.appendChild(createMaterial('0 0 0'));
+  edgeShape.appendChild(edgeSet);
+  group.appendChild(edgeShape);
+}
+
+let groundProjectionCopyY = -16.02;
+let groundProjectionCopySelected = false;
+let groundProjectionCopyHovered = false;
+
+function formatGroundProjectionCopyY() {
+  return groundProjectionCopyY.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function updateGroundProjectionCopyY() {
+  const projection = document.getElementById('ground-projection-copy');
+  if (!projection) return;
+
+  projection.setAttribute('translation', `0 ${groundProjectionCopyY} 0`);
+
+  const label = document.getElementById('ground-projection-copy-y-label-text');
+  if (label) label.setAttribute('string', `"y=${formatGroundProjectionCopyY()}"`);
+  applyGroundProjectionCopySection();
+}
+
+function setGroundProjectionCopySelected(selected) {
+  groundProjectionCopySelected = selected;
+  if (selected) setGroundProjectionSelected(false);
+  updateGroundProjectionCopyMaterial();
+}
+
+function setGroundProjectionCopyHovered(hovered) {
+  groundProjectionCopyHovered = hovered;
+  updateGroundProjectionCopyMaterial();
+}
+
+function updateGroundProjectionCopyMaterial() {
+  const planeMaterial = document.getElementById('ground-projection-copy-plane-material');
+  if (!planeMaterial) return;
+
+  let diffuse = '0.2 0.2 0.2';
+  let emissive = '0.2 0.2 0.2';
+  let transparency = '0.76';
+
+  if (groundProjectionCopyHovered) {
+    diffuse = '0.42 0.42 0.42';
+    emissive = '0.16 0.16 0.16';
+    transparency = '0.62';
+  }
+
+  planeMaterial.setAttribute('diffuseColor', diffuse);
+  planeMaterial.setAttribute('emissiveColor', emissive);
+  planeMaterial.setAttribute('transparency', transparency);
+}
+
+window.pickGroundProjectionCopy = function (e) {
+  if (e) e.stopPropagation();
+  const now = Date.now();
+  if (window.pickGroundProjectionCopy.lastPickAt && now - window.pickGroundProjectionCopy.lastPickAt < 250) return;
+  window.pickGroundProjectionCopy.lastPickAt = now;
+  setGroundProjectionCopySelected(!groundProjectionCopySelected);
+};
+
+window.hoverGroundProjectionCopy = function (e) {
+  if (e) e.stopPropagation();
+  setGroundProjectionCopyHovered(true);
+};
+
+window.unhoverGroundProjectionCopy = function (e) {
+  if (e) e.stopPropagation();
+  setGroundProjectionCopyHovered(false);
+};
+
+(function initGroundProjectionCopyWheel() {
+  const x3dEl = document.getElementById('x3d');
+  if (!x3dEl) return;
+
+  x3dEl.addEventListener('wheel', e => {
+    if (!groundProjectionCopySelected || !document.getElementById('ground-projection-copy')) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    groundProjectionCopyY += e.deltaY < 0 ? 0.25 : -0.25;
+    updateGroundProjectionCopyY();
+  }, { capture: true, passive: false });
+})();
+
+function toggleGroundProjectionCopy() {
+  const existing = document.getElementById('ground-projection-copy');
+  if (existing) {
+    existing.remove();
+    clearSectionVisibility();
+    setGroundProjectionCopySelected(false);
+    setGroundProjectionCopyHovered(false);
+    if (window.x3dom) x3dom.reload();
+    return;
+  }
+
+  const scene = document.querySelector('scene');
+  if (!scene) return;
+
+  const size = 12;
+  const half = size / 2;
+  const step = 2;
+  const group = document.createElement('transform');
+  group.id = 'ground-projection-copy';
+  group.setAttribute('translation', `0 ${groundProjectionCopyY} 0`);
+
+  function createMaterial(color, transparency = '0') {
+    const appearance = document.createElement('appearance');
+    const material = document.createElement('material');
+    material.setAttribute('diffuseColor', color);
+    material.setAttribute('emissiveColor', color);
+    material.setAttribute('transparency', transparency);
+    appearance.appendChild(material);
+    return appearance;
+  }
+
+  function addGroundLabel(textValue, translation, id = '') {
+    const transform = document.createElement('transform');
+    const shape = document.createElement('shape');
+    const text = document.createElement('text');
+    const fontStyle = document.createElement('fontStyle');
+
+    transform.setAttribute('translation', translation);
+    transform.setAttribute('rotation', '1 0 0 -1.5708');
+    if (id) text.id = id;
+    text.setAttribute('string', `"${textValue}"`);
+    fontStyle.setAttribute('size', '0.45');
+    fontStyle.setAttribute('family', '"Times New Roman"');
+    fontStyle.setAttribute('justify', '"MIDDLE" "MIDDLE"');
+
+    text.appendChild(fontStyle);
+    shape.appendChild(createMaterial('0 0 0'));
+    shape.appendChild(text);
+    transform.appendChild(shape);
+    group.appendChild(transform);
+  }
+
+  const planeTransform = document.createElement('transform');
+  const planeShape = document.createElement('shape');
+  const plane = document.createElement('box');
+  const planeAppearance = createMaterial('0.2 0.2 0.2', '0.76');
+  const planeMaterial = planeAppearance.querySelector('material');
+  planeMaterial.id = 'ground-projection-copy-plane-material';
+
+  planeTransform.setAttribute('translation', '0 -0.02 0');
+  plane.setAttribute('size', `${size} 0.04 ${size}`);
+  planeShape.appendChild(planeAppearance);
+  planeShape.appendChild(plane);
+  planeTransform.appendChild(planeShape);
+  group.appendChild(planeTransform);
+
+  const pickTransform = document.createElement('transform');
+  const pickShape = document.createElement('shape');
+  const pickAppearance = document.createElement('appearance');
+  const pickMaterial = document.createElement('material');
+  const pickBox = document.createElement('box');
+  pickTransform.setAttribute('translation', '0 0.04 0');
+  pickShape.setAttribute('onclick', 'window.pickGroundProjectionCopy(event)');
+  pickShape.setAttribute('onmousedown', 'window.pickGroundProjectionCopy(event)');
+  pickShape.setAttribute('onmouseover', 'window.hoverGroundProjectionCopy(event)');
+  pickShape.setAttribute('onmouseout', 'window.unhoverGroundProjectionCopy(event)');
+  pickMaterial.setAttribute('diffuseColor', '1 1 1');
+  pickMaterial.setAttribute('transparency', '0.98');
+  pickAppearance.appendChild(pickMaterial);
+  pickBox.setAttribute('size', `${size} 0.12 ${size}`);
+  pickShape.appendChild(pickAppearance);
+  pickShape.appendChild(pickBox);
+  pickTransform.appendChild(pickShape);
+  group.appendChild(pickTransform);
+
+  addSectionVoidToGroup(group, size, half, createMaterial);
+
+  const linePoints = [
+    `${-half} 0 ${-half}`, `${half} 0 ${-half}`,
+    `${half} 0 ${-half}`, `${half} 0 ${half}`,
+    `${half} 0 ${half}`, `${-half} 0 ${half}`,
+    `${-half} 0 ${half}`, `${-half} 0 ${-half}`,
+    `${-half} 0 0`, `${half} 0 0`,
+    `0 0 ${-half}`, `0 0 ${half}`,
+  ];
+  const lineSegments = [];
+
+  for (let i = 0; i < linePoints.length; i += 2) {
+    lineSegments.push(`${i} ${i + 1} -1`);
+  }
+
+  for (let value = -half; value <= half; value += step) {
+    const xTickStart = linePoints.length;
+    linePoints.push(`${value} 0 ${-half}`, `${value} 0 ${-half - 0.45}`);
+    lineSegments.push(`${xTickStart} ${xTickStart + 1} -1`);
+
+    const zTickStart = linePoints.length;
+    linePoints.push(`${-half} 0 ${value}`, `${-half - 0.45} 0 ${value}`);
+    lineSegments.push(`${zTickStart} ${zTickStart + 1} -1`);
+
+    addGroundLabel(value, `${value} 0 ${-half - 0.95}`);
+    addGroundLabel(value, `${-half - 0.95} 0 ${value}`);
+  }
+
+  const lineShape = document.createElement('shape');
+  const lineSet = document.createElement('indexedLineSet');
+  const lineCoords = document.createElement('coordinate');
+  lineSet.setAttribute('coordIndex', lineSegments.join(' '));
+  lineCoords.setAttribute('point', linePoints.join(' '));
+  lineSet.appendChild(lineCoords);
+  lineShape.appendChild(createMaterial('0 0 0'));
+  lineShape.appendChild(lineSet);
+  group.appendChild(lineShape);
+
+  addGroundLabel(`y=${formatGroundProjectionCopyY()}`, `${half + 1.35} 0 ${half + 0.75}`, 'ground-projection-copy-y-label-text');
+
+  scene.appendChild(group);
+  setGroundProjectionCopySelected(false);
+  setGroundProjectionCopyHovered(false);
+  applyGroundProjectionCopySection();
+  if (window.x3dom) x3dom.reload();
+}
+
+function parseVec3(value) {
+  return String(value || '0 0 0').trim().split(/\s+/).map(Number);
+}
+
+function getComponentWorldPosition(defName) {
+  const transform = document.querySelector(`[DEF="${defName}_TRANSFORM"]`);
+  if (!transform) return null;
+
+  const local = parseVec3(transform.getAttribute('translation'));
+  if (local.length < 3 || local.some(Number.isNaN)) return null;
+
+  return {
+    x: local[0] * 10,
+    y: local[1] * 10 - 10,
+    z: local[2] * 10,
+  };
+}
+
+function clearSectionVisibility() {
+  const groundPlane = document.getElementById('model-ground-plane');
+  if (groundPlane) groundPlane.setAttribute('render', 'true');
+
+  const clipPlane = document.getElementById('ground-section-clip-plane');
+  if (clipPlane) clipPlane.remove();
+
+  if (typeof TYPE_DEFS === 'undefined') return;
+
+  Object.values(TYPE_DEFS).flat().forEach(name => {
+    const transform = document.querySelector(`[DEF="${name}_TRANSFORM"]`);
+    if (transform) transform.setAttribute('render', 'true');
+  });
+}
+
+function applyGroundProjectionCopySection() {
+  if (!document.getElementById('ground-projection-copy')) {
+    clearSectionVisibility();
+    return;
+  }
+
+  const modelWrapper = document.getElementById('model-wrapper');
+  if (!modelWrapper) return;
+
+  let clipPlane = document.getElementById('ground-section-clip-plane');
+  if (!clipPlane) {
+    clipPlane = document.createElement('clipPlane');
+    clipPlane.id = 'ground-section-clip-plane';
+    clipPlane.setAttribute('enabled', 'true');
+    modelWrapper.insertBefore(clipPlane, modelWrapper.firstChild);
+  }
+
+  const localClipY = (groundProjectionCopyY + 10) / 10;
+  clipPlane.setAttribute('plane', `0 1 0 ${-localClipY}`);
+  if (window.x3dom) x3dom.reload();
+}
+
 const TYPE_DEFS = {
   '枓': ['_01_Lu_Dou',
          '_04_Jiao_Hu_Dou', '_05_Jiao_Hu_Dou',
@@ -99,6 +858,7 @@ function _animateTo(defName, target, duration = 1400) {
     ];
     tr.setAttribute('translation', pos.map(v => v.toFixed(6)).join(' '));
     _animCur[defName] = pos;
+    applyGroundProjectionCopySection();
     if (p < 1) _animRaf[defName] = requestAnimationFrame(step);
   }
   _animRaf[defName] = requestAnimationFrame(step);
@@ -285,6 +1045,7 @@ fetch('05-5-1.x3d')
 
     // wrapper keeps original scale/position
     const wrapper = document.createElement('transform');
+    wrapper.id = 'model-wrapper';
     wrapper.setAttribute('scale', '10 10 10');
     wrapper.setAttribute('translation', '0 -10 0');
 
@@ -309,30 +1070,68 @@ fetch('05-5-1.x3d')
 (function () {
   const resizer   = document.getElementById('resizer');
   const leftPanel = document.getElementById('left-panel');
-  let dragging = false, startX, startW;
+  let dragging = false;
+  let startX = 0;
+  let startW = 0;
+  let pendingWidth = null;
+  let resizeFrame = null;
 
-  resizer.addEventListener('mousedown', e => {
+  function applyPendingWidth() {
+    resizeFrame = null;
+    if (pendingWidth === null) return;
+    leftPanel.style.width = pendingWidth + 'px';
+  }
+
+  function queueWidth(width) {
+    pendingWidth = width;
+    if (resizeFrame !== null) return;
+    resizeFrame = requestAnimationFrame(applyPendingWidth);
+  }
+
+  function resizeX3dom() {
+    if (window.x3dom) x3dom.reload();
+  }
+
+  resizer.addEventListener('pointerdown', e => {
     dragging = true;
     startX = e.clientX;
     startW = leftPanel.offsetWidth;
     resizer.classList.add('dragging');
+    document.body.classList.add('resizing');
     document.body.style.userSelect = 'none';
     document.body.style.cursor = 'col-resize';
+    resizer.setPointerCapture(e.pointerId);
+    e.preventDefault();
   });
-  document.addEventListener('mousemove', e => {
+
+  resizer.addEventListener('pointermove', e => {
     if (!dragging) return;
-    const w = Math.max(200, Math.min(window.innerWidth - 200, startW + e.clientX - startX));
-    leftPanel.style.width = w + 'px';
-    // notify X3DOM to resize
-    if (window.x3dom) x3dom.reload();
+    const minLeft = 200;
+    const minRight = 200;
+    const width = Math.max(minLeft, Math.min(window.innerWidth - minRight, startW + e.clientX - startX));
+    queueWidth(width);
+    e.preventDefault();
   });
-  document.addEventListener('mouseup', () => {
+
+  function stopDragging(e) {
     if (!dragging) return;
     dragging = false;
     resizer.classList.remove('dragging');
+    document.body.classList.remove('resizing');
     document.body.style.userSelect = '';
     document.body.style.cursor = '';
-  });
+    if (e && resizer.hasPointerCapture(e.pointerId)) {
+      resizer.releasePointerCapture(e.pointerId);
+    }
+    if (resizeFrame !== null) {
+      cancelAnimationFrame(resizeFrame);
+      applyPendingWidth();
+    }
+    resizeX3dom();
+  }
+
+  resizer.addEventListener('pointerup', stopDragging);
+  resizer.addEventListener('pointercancel', stopDragging);
 })();
 
 
