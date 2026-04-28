@@ -819,6 +819,22 @@ const ASSEMBLED_POS = {
   '_24_Fang':        [ 0.336537,  0.097120, -0.277692],
 };
 
+const LAYER_DEFS = [
+  ['_01_Lu_Dou'],
+  ['_02_Ni_Dao_Gong', '_03_Xia_Ang', '_25_XiaAng'],
+  ['_04_Jiao_Hu_Dou', '_05_Jiao_Hu_Dou', '_07_Qi_Xin_Dou', '_08_Qi_Xin_Dou'],
+  ['_09_Gua_Zi_Gong', '_10_Gua_Zi_Gong', '_11_Mang_Gong'],
+  ['_12_Shua_Tou'],
+  [
+    '_13_San_Dou', '_14_San_Dou', '_15_San_Dou', '_16_San_Dou',
+    '_17_Jiao_Hu_Dou', '_18_Jiao_Hu_Dou',
+    '_19_Qi_Xin_Dou', '_20_Qi_Xin_Dou',
+  ],
+  ['_22_Fang', '_23_Fang', '_24_Fang'],
+  ['_06_Fu'],
+  ['_21_Fang'],
+];
+
 // ── 各類型的固定散落偏移量（x, y, z）──
 const SCATTER_OFFSET = {
   '枓':  [ 2.0,  0.0,  0.0],
@@ -888,6 +904,70 @@ window.scatterType = function (type) {
     _animateTo(name, [orig[0] + defOff[0], y, orig[2] + defOff[2]]);
   });
 };
+
+let assembledLayerCount = 1;
+let layerNavReady = false;
+
+function getTypeForDef(defName) {
+  return Object.keys(TYPE_DEFS).find(type => TYPE_DEFS[type].includes(defName));
+}
+
+function getScatterTarget(defName) {
+  const orig = ASSEMBLED_POS[defName];
+  if (!orig) return null;
+
+  const type = getTypeForDef(defName);
+  const off = SCATTER_OFFSET[type] || [0, 0, 0];
+  const defOff = SCATTER_OFFSET_BY_DEF[defName] ?? off;
+  const y = SCATTER_Y_BY_DEF[defName] ?? SCATTER_Y;
+  return [orig[0] + defOff[0], y, orig[2] + defOff[2]];
+}
+
+function updateLayerNavButtons() {
+  const back = document.getElementById('layer-back');
+  const next = document.getElementById('layer-next');
+  if (!back || !next) return;
+
+  back.disabled = !layerNavReady || assembledLayerCount <= 1;
+  next.disabled = !layerNavReady || assembledLayerCount >= LAYER_DEFS.length;
+}
+
+function assembleLayer(index) {
+  (LAYER_DEFS[index] || []).forEach(name => {
+    if (ASSEMBLED_POS[name]) _animateTo(name, ASSEMBLED_POS[name]);
+  });
+}
+
+function scatterLayer(index) {
+  (LAYER_DEFS[index] || []).forEach(name => {
+    const target = getScatterTarget(name);
+    if (target) _animateTo(name, target);
+  });
+}
+
+function initLayerNav() {
+  const back = document.getElementById('layer-back');
+  const next = document.getElementById('layer-next');
+  if (!back || !next) return;
+
+  back.addEventListener('click', () => {
+    if (!layerNavReady || assembledLayerCount <= 1) return;
+    assembledLayerCount -= 1;
+    scatterLayer(assembledLayerCount);
+    updateLayerNavButtons();
+  });
+
+  next.addEventListener('click', () => {
+    if (!layerNavReady || assembledLayerCount >= LAYER_DEFS.length) return;
+    assembleLayer(assembledLayerCount);
+    assembledLayerCount += 1;
+    updateLayerNavButtons();
+  });
+
+  updateLayerNavButtons();
+}
+
+initLayerNav();
 
 const ORIG_DIFFUSE = '0.45 0.28 0.14';
 const ORIG_SPEC    = '0.22 0.14 0.07';
@@ -1062,6 +1142,9 @@ fetch('05-5-1.x3d')
       initHoverSystem();
       // 初始：所有構件散落
       Object.keys(TYPE_DEFS).forEach(type => window.scatterType(type));
+      assembledLayerCount = 1;
+      layerNavReady = true;
+      updateLayerNavButtons();
     }, 300);
   })
   .catch(err => console.error('X3D load failed:', err));

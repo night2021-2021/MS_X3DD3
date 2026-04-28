@@ -192,12 +192,49 @@
     /* ── Mode hint (bottom-left of graph panel) ── */
     #mode-hint {
       position: absolute;
-      bottom: 10px;
+      bottom: 68px;
       left: 10px;
       font-size: 11px;
       font-family: 'Segoe UI', sans-serif;
       color: #718096;
       pointer-events: none;
+    }
+
+    .node-nav {
+      position: absolute;
+      left: 50%;
+      bottom: 18px;
+      display: flex;
+      gap: 10px;
+      transform: translateX(-50%);
+      z-index: 4;
+    }
+
+    .node-nav button {
+      min-width: 72px;
+      height: 34px;
+      border: 1px solid #4a5568;
+      border-radius: 6px;
+      background: #2d3748;
+      color: #e2e8f0;
+      font: 600 13px 'Segoe UI', sans-serif;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
+    }
+
+    .node-nav button:hover {
+      background: #3b4a60;
+      border-color: #63b3ed;
+    }
+
+    .node-nav button:focus-visible {
+      outline: 2px solid #63b3ed;
+      outline-offset: 3px;
+    }
+
+    .node-nav button:disabled {
+      opacity: 0.45;
+      cursor: default;
     }
 
     /* ── X3D hover tooltip ── */
@@ -270,6 +307,10 @@
   <div id="right-panel">
     <svg id="graph-svg"></svg>
     <div id="mode-hint"></div>
+    <div class="node-nav" aria-label="Node navigation">
+      <button id="layer-back" type="button">Back</button>
+      <button id="layer-next" type="button">Next</button>
+    </div>
   </div>
 
   <script src="script.js"></script>
