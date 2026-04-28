@@ -124,8 +124,8 @@ function toggleUnitGrid() {
   const scene = document.querySelector('scene');
   if (!scene) return;
 
-  const cells = 6;
-  const cellSize = 2;
+  const cells = 5;
+  const cellSize = 2.4;
   const half = (cells * cellSize) / 2;
   const points = [];
   const pointIndex = new Map();
@@ -170,7 +170,7 @@ function toggleUnitGrid() {
 
   const transform = document.createElement('transform');
   transform.id = 'unit-cube-grid';
-  transform.setAttribute('translation', '0 -16 0');
+  transform.setAttribute('translation', '-0.134631 -14.428800 0.011413');
 
   const shape = document.createElement('shape');
   const appearance = document.createElement('appearance');
@@ -826,12 +826,14 @@ const SCATTER_OFFSET = {
   '昂':  [ 0.0,  0.0,  2.0],
   '栿':  [ 0.0,  0.0, -2.0],
   '耍頭': [ 1.5,  0.0,  1.5],
-  '枋':  [ 0.0,  1.5,  0.0],
+  '枋':  [ 1.89,  0.0, -1.640001],
 };
 
 // ── 動畫系統 ──
 const SCATTER_OFFSET_BY_DEF = {
+  '_01_Lu_Dou': [0.0, 0.0, 0.0],
   '_03_Xia_Ang': [0.0, 0.0, 1.2],
+  '_23_Fang':   [2.49, 0.0, -1.640001],
   '_25_XiaAng':  [-0.25, 0.0, 1.5],
 };
 
@@ -870,9 +872,10 @@ window.assembleType = function (type) {
   });
 };
 
-const SCATTER_Y = -0.8;  // 所有散落構件的統一高度
+const SCATTER_Y = -0.442880;  // 所有散落構件的統一高度
 const SCATTER_Y_BY_DEF = {
-  '_25_XiaAng': -3.56,
+  '_01_Lu_Dou': -0.442880,
+  '_25_XiaAng': -3.202880,
 };
 
 window.scatterType = function (type) {
