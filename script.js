@@ -1117,6 +1117,159 @@ function initHoverSystem() {
   });
 }
 
+let boundingBoxesVisible = false;
+
+function getGeometryGroupForPart(transform) {
+  const group = transform.querySelector('Group');
+  if (!group) return null;
+
+  const use = group.getAttribute('USE');
+  if (!use) return group;
+
+  return document.querySelector(`Group[DEF="${use}"]`);
+}
+
+function getLocalBoundingBox(transform) {
+  const group = getGeometryGroupForPart(transform);
+  if (!group) return null;
+
+  const coord = group.querySelector('Coordinate[point]');
+  if (!coord) return null;
+
+  const values = coord.getAttribute('point').trim().split(/\s+/).map(Number);
+  if (values.length < 3) return null;
+
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+
+  for (let i = 0; i + 2 < values.length; i += 3) {
+    const point = [values[i], values[i + 1], values[i + 2]];
+    if (point.some(Number.isNaN)) continue;
+
+    for (let axis = 0; axis < 3; axis++) {
+      min[axis] = Math.min(min[axis], point[axis]);
+      max[axis] = Math.max(max[axis], point[axis]);
+    }
+  }
+
+  if (min.some(v => !Number.isFinite(v)) || max.some(v => !Number.isFinite(v))) return null;
+
+  const pad = 0.08;
+  const size = min.map((v, i) => Math.max(max[i] - v + pad, 0.12));
+  return {
+    center: min.map((v, i) => ((v + max[i]) / 2).toFixed(6)).join(' '),
+    size,
+  };
+}
+
+function removeBoundingBoxes() {
+  document.querySelectorAll('[data-bounding-box="true"]').forEach(el => el.remove());
+  if (window.x3dom) x3dom.reload();
+}
+
+function createBoundingBox(transform) {
+  const bounds = getLocalBoundingBox(transform);
+  if (!bounds) return;
+
+  const boxTransform = document.createElement('transform');
+  const fillShape = document.createElement('shape');
+  const fillAppearance = document.createElement('appearance');
+  const fillMaterial = document.createElement('material');
+  const box = document.createElement('box');
+  const lineShape = document.createElement('shape');
+  const lineAppearance = document.createElement('appearance');
+  const lineMaterial = document.createElement('material');
+  const lineSet = document.createElement('indexedLineSet');
+  const lineCoords = document.createElement('coordinate');
+  const [sx, sy, sz] = bounds.size;
+  const hx = sx / 2;
+  const hy = sy / 2;
+  const hz = sz / 2;
+  const scaleSigns = (transform.getAttribute('scale') || '1 1 1')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 3)
+    .map(value => Number(value) < 0 ? -1 : 1);
+
+  boxTransform.setAttribute('translation', bounds.center);
+  boxTransform.setAttribute('data-bounding-box', 'true');
+  if (scaleSigns.some(value => value < 0)) {
+    boxTransform.setAttribute('scale', scaleSigns.join(' '));
+  }
+
+  fillMaterial.setAttribute('diffuseColor', '0.25 0.68 1');
+  fillMaterial.setAttribute('emissiveColor', '0.05 0.18 0.3');
+  fillMaterial.setAttribute('transparency', '0.72');
+  box.setAttribute('size', bounds.size.map(v => v.toFixed(6)).join(' '));
+
+  lineMaterial.setAttribute('diffuseColor', '0 0 0');
+  lineMaterial.setAttribute('emissiveColor', '0 0 0');
+  lineSet.setAttribute('coordIndex', [
+    '0 1 2 3 0 -1',
+    '4 5 6 7 4 -1',
+    '0 4 -1',
+    '1 5 -1',
+    '2 6 -1',
+    '3 7 -1',
+  ].join(' '));
+  lineCoords.setAttribute('point', [
+    `${-hx} ${-hy} ${-hz}`,
+    `${hx} ${-hy} ${-hz}`,
+    `${hx} ${hy} ${-hz}`,
+    `${-hx} ${hy} ${-hz}`,
+    `${-hx} ${-hy} ${hz}`,
+    `${hx} ${-hy} ${hz}`,
+    `${hx} ${hy} ${hz}`,
+    `${-hx} ${hy} ${hz}`,
+  ].join(' '));
+
+  fillAppearance.appendChild(fillMaterial);
+  fillShape.appendChild(fillAppearance);
+  fillShape.appendChild(box);
+  lineAppearance.appendChild(lineMaterial);
+  lineSet.appendChild(lineCoords);
+  lineShape.appendChild(lineAppearance);
+  lineShape.appendChild(lineSet);
+  boxTransform.appendChild(fillShape);
+  boxTransform.appendChild(lineShape);
+  transform.appendChild(boxTransform);
+}
+
+function renderBoundingBoxes() {
+  document.querySelectorAll('[data-bounding-box="true"]').forEach(el => el.remove());
+
+  Object.values(TYPE_DEFS).flat().forEach(name => {
+    const transform = document.querySelector(`[DEF="${name}_TRANSFORM"]`);
+    if (transform) createBoundingBox(transform);
+  });
+
+  if (window.x3dom) x3dom.reload();
+}
+
+function setBoundingBoxesVisible(visible) {
+  boundingBoxesVisible = visible;
+
+  const toggle = document.getElementById('bbox-toggle');
+  if (toggle) {
+    toggle.classList.toggle('is-active', visible);
+    toggle.setAttribute('aria-pressed', String(visible));
+  }
+
+  if (visible) renderBoundingBoxes();
+  else removeBoundingBoxes();
+}
+
+function initBoundingBoxToggle() {
+  const toggle = document.getElementById('bbox-toggle');
+  if (!toggle) return;
+
+  toggle.addEventListener('click', () => {
+    setBoundingBoxesVisible(!boundingBoxesVisible);
+  });
+}
+
+initBoundingBoxToggle();
+
 // Fetch X3D, inject into DOM so querySelector works, then init highlight
 const targetScene = document.querySelector('scene');
 fetch('05-5-1.x3d')
@@ -1145,6 +1298,7 @@ fetch('05-5-1.x3d')
       assembledLayerCount = 1;
       layerNavReady = true;
       updateLayerNavButtons();
+      if (boundingBoxesVisible) renderBoundingBoxes();
     }, 300);
   })
   .catch(err => console.error('X3D load failed:', err));

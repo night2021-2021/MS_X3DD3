@@ -149,6 +149,38 @@
       display: block;
     }
 
+    #bbox-toggle {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 4;
+      width: 34px;
+      height: 34px;
+      border: 1px solid #4a5568;
+      border-radius: 6px;
+      background: #2d3748;
+      color: #e2e8f0;
+      font: 700 13px 'Segoe UI', sans-serif;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
+    }
+
+    #bbox-toggle:hover {
+      background: #3b4a60;
+      border-color: #63b3ed;
+    }
+
+    #bbox-toggle:focus-visible {
+      outline: 2px solid #63b3ed;
+      outline-offset: 3px;
+    }
+
+    #bbox-toggle.is-active {
+      background: #e94560;
+      border-color: #fbd38d;
+      color: #ffffff;
+    }
+
     /* ── Graph elements ── */
     .link { cursor: pointer; }
 
@@ -305,6 +337,7 @@
 
   <!-- Right: D3 graph editor -->
   <div id="right-panel">
+    <button id="bbox-toggle" type="button" aria-pressed="false" title="Bounding boxes">BB</button>
     <svg id="graph-svg"></svg>
     <div id="mode-hint"></div>
     <div class="node-nav" aria-label="Node navigation">
