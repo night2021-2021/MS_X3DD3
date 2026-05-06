@@ -18,6 +18,17 @@
    Model bottom feature lights
 ───────────────────────────────────────── */
 let activeDimensionFeature = null;
+let dimensionFeatureValue = 3;
+
+function normalizeDimensionFeatureValue(value) {
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed)) return dimensionFeatureValue;
+  return Math.min(Math.max(parsed, 1), 12);
+}
+
+function getDimensionDisplayCount() {
+  return dimensionFeatureValue * 2 - 1;
+}
 
 function setActiveDimensionFeature(feature) {
   activeDimensionFeature = feature;
@@ -60,9 +71,17 @@ function activateDimensionFeature(feature) {
   setActiveDimensionFeature(feature);
 }
 
+function refreshActiveDimensionFeature() {
+  const feature = activeDimensionFeature;
+  if (!feature) return;
+  clearDimensionFeatures();
+  activateDimensionFeature(feature);
+}
+
 (function initFeatureLights() {
   const bar = document.getElementById('model-bottom-bar');
   const lights = document.getElementById('feature-lights');
+  const countInput = document.getElementById('feature-count');
   if (!bar || !lights) return;
 
   function setOpen(open) {
@@ -100,6 +119,15 @@ function activateDimensionFeature(feature) {
     handleFeature(e);
   }
 
+  function updateFeatureCount() {
+    if (!countInput) return;
+    const nextValue = normalizeDimensionFeatureValue(countInput.value);
+    countInput.value = nextValue;
+    if (nextValue === dimensionFeatureValue) return;
+    dimensionFeatureValue = nextValue;
+    refreshActiveDimensionFeature();
+  }
+
   bar.addEventListener('click', toggleLights);
   bar.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -110,6 +138,13 @@ function activateDimensionFeature(feature) {
   lights.addEventListener('click', e => e.stopPropagation());
   lights.addEventListener('click', handleFeature);
   lights.addEventListener('keydown', handleFeatureKey);
+  if (countInput) {
+    countInput.value = dimensionFeatureValue;
+    countInput.addEventListener('click', e => e.stopPropagation());
+    countInput.addEventListener('keydown', e => e.stopPropagation());
+    countInput.addEventListener('change', updateFeatureCount);
+    countInput.addEventListener('input', updateFeatureCount);
+  }
   document.addEventListener('click', () => setOpen(false));
 })();
 
@@ -124,7 +159,7 @@ function toggleUnitGrid() {
   const scene = document.querySelector('scene');
   if (!scene) return;
 
-  const cells = 5;
+  const cells = getDimensionDisplayCount();
   const cellSize = 2.4;
   const half = (cells * cellSize) / 2;
   const points = [];
@@ -250,18 +285,19 @@ function toggleAxisMarkers() {
     parent.appendChild(transform);
   }
 
+  const displayCount = getDimensionDisplayCount();
+  const step = 2;
   const length = 12;
   const half = length / 2;
-  const step = 2;
-  const xzHalf = half + step;
+  const xzHalf = (displayCount - 1) * step / 2;
   const xzLength = xzHalf * 2;
   const red = '0.9 0.05 0.05';
   const green = '0.05 0.7 0.15';
   const blue = '0.05 0.25 0.95';
 
-  addCylinder(group, '0 0 0', '0 0 1 1.5708', xzLength, red);
+  addCylinder(group, '0 0 0', '0 0 1 1.5708', Math.max(xzLength, step), red);
   addCylinder(group, `0 ${half} 0`, null, length, green);
-  addCylinder(group, '0 0 0', '1 0 0 1.5708', xzLength, blue);
+  addCylinder(group, '0 0 0', '1 0 0 1.5708', Math.max(xzLength, step), blue);
 
   for (let value = -xzHalf; value <= xzHalf; value += step) {
     addSphere(group, `${value} 0 0`, red);
@@ -373,9 +409,10 @@ function toggleGroundProjection() {
   const scene = document.querySelector('scene');
   if (!scene) return;
 
-  const size = 12;
-  const half = size / 2;
   const step = 2;
+  const displayCount = getDimensionDisplayCount();
+  const half = (displayCount - 1) * step / 2;
+  const size = Math.max(half * 2, step);
   const group = document.createElement('transform');
   group.id = 'ground-projection';
   group.setAttribute('translation', `0 ${groundProjectionY} 0`);
@@ -603,9 +640,10 @@ function toggleGroundProjectionCopy() {
   const scene = document.querySelector('scene');
   if (!scene) return;
 
-  const size = 12;
-  const half = size / 2;
   const step = 2;
+  const displayCount = getDimensionDisplayCount();
+  const half = (displayCount - 1) * step / 2;
+  const size = Math.max(half * 2, step);
   const group = document.createElement('transform');
   group.id = 'ground-projection-copy';
   group.setAttribute('translation', `0 ${groundProjectionCopyY} 0`);
@@ -1118,6 +1156,7 @@ function initHoverSystem() {
 }
 
 let boundingBoxesVisible = false;
+let modelHiddenForBoundingBoxes = false;
 
 function getGeometryGroupForPart(transform) {
   const group = transform.querySelector('Group');
@@ -1243,6 +1282,38 @@ function renderBoundingBoxes() {
     if (transform) createBoundingBox(transform);
   });
 
+  if (modelHiddenForBoundingBoxes) applyModelGeometryVisibility(false);
+  if (window.x3dom) x3dom.reload();
+}
+
+function getModelGeometryChildren(transform) {
+  return Array.from(transform.children).filter(child =>
+    child.getAttribute('data-bounding-box') !== 'true'
+  );
+}
+
+function applyModelGeometryVisibility(visible) {
+  Object.values(TYPE_DEFS).flat().forEach(name => {
+    const transform = document.querySelector(`[DEF="${name}_TRANSFORM"]`);
+    if (!transform) return;
+
+    getModelGeometryChildren(transform).forEach(child => {
+      child.setAttribute('render', String(visible));
+    });
+  });
+}
+
+function setModelHiddenForBoundingBoxes(hidden) {
+  modelHiddenForBoundingBoxes = hidden;
+
+  const toggle = document.getElementById('model-visibility-toggle');
+  if (toggle) {
+    toggle.classList.toggle('is-active', hidden);
+    toggle.setAttribute('aria-pressed', String(hidden));
+  }
+
+  if (hidden && !boundingBoxesVisible) setBoundingBoxesVisible(true);
+  applyModelGeometryVisibility(!hidden);
   if (window.x3dom) x3dom.reload();
 }
 
@@ -1256,7 +1327,10 @@ function setBoundingBoxesVisible(visible) {
   }
 
   if (visible) renderBoundingBoxes();
-  else removeBoundingBoxes();
+  else {
+    if (modelHiddenForBoundingBoxes) setModelHiddenForBoundingBoxes(false);
+    removeBoundingBoxes();
+  }
 }
 
 function initBoundingBoxToggle() {
@@ -1269,6 +1343,17 @@ function initBoundingBoxToggle() {
 }
 
 initBoundingBoxToggle();
+
+function initModelVisibilityToggle() {
+  const toggle = document.getElementById('model-visibility-toggle');
+  if (!toggle) return;
+
+  toggle.addEventListener('click', () => {
+    setModelHiddenForBoundingBoxes(!modelHiddenForBoundingBoxes);
+  });
+}
+
+initModelVisibilityToggle();
 
 // Fetch X3D, inject into DOM so querySelector works, then init highlight
 const targetScene = document.querySelector('scene');

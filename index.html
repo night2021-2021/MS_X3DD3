@@ -119,6 +119,31 @@
     .feature-light:nth-child(5) { background: #b875e8; }
 
     /* ── Resizer ── */
+    .feature-count-control {
+      display: flex;
+      align-items: center;
+      margin-left: 4px;
+      padding-left: 12px;
+      border-left: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    #feature-count {
+      width: 42px;
+      height: 26px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      font: 700 13px 'Segoe UI', sans-serif;
+      text-align: center;
+      outline: none;
+    }
+
+    #feature-count:focus-visible {
+      border-color: rgba(255, 255, 255, 0.72);
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.24);
+    }
+
     #resizer {
       flex: none;
       width: 5px;
@@ -149,10 +174,9 @@
       display: block;
     }
 
-    #bbox-toggle {
+    .graph-toggle {
       position: absolute;
       top: 12px;
-      left: 12px;
       z-index: 4;
       width: 34px;
       height: 34px;
@@ -165,17 +189,25 @@
       box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
     }
 
-    #bbox-toggle:hover {
+    #bbox-toggle {
+      left: 12px;
+    }
+
+    #model-visibility-toggle {
+      left: 52px;
+    }
+
+    .graph-toggle:hover {
       background: #3b4a60;
       border-color: #63b3ed;
     }
 
-    #bbox-toggle:focus-visible {
+    .graph-toggle:focus-visible {
       outline: 2px solid #63b3ed;
       outline-offset: 3px;
     }
 
-    #bbox-toggle.is-active {
+    .graph-toggle.is-active {
       background: #e94560;
       border-color: #fbd38d;
       color: #ffffff;
@@ -328,6 +360,9 @@
       <span class="feature-light" role="button" tabindex="0" data-feature="ground-projection" title="地面投影"></span>
       <span class="feature-light" role="button" tabindex="0" data-feature="ground-projection-copy" title="剖面空區"></span>
       <span class="feature-light" role="button" tabindex="0" data-feature="feature-five" title="功能 5"></span>
+      <label class="feature-count-control" title="展示數量">
+        <input id="feature-count" type="number" min="1" max="12" step="1" value="3" aria-label="展示數量">
+      </label>
     </div>
     <div id="model-bottom-bar" role="button" tabindex="0" aria-label="功能選單" aria-expanded="false"></div>
   </div>
@@ -337,7 +372,8 @@
 
   <!-- Right: D3 graph editor -->
   <div id="right-panel">
-    <button id="bbox-toggle" type="button" aria-pressed="false" title="Bounding boxes">BB</button>
+    <button id="bbox-toggle" class="graph-toggle" type="button" aria-pressed="false" title="Bounding boxes">BB</button>
+    <button id="model-visibility-toggle" class="graph-toggle" type="button" aria-pressed="false" title="只保留 bounding box">AA</button>
     <svg id="graph-svg"></svg>
     <div id="mode-hint"></div>
     <div class="node-nav" aria-label="Node navigation">
