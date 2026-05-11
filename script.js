@@ -31,6 +31,18 @@ const CAI_GRADE_VALUES = {
   7: 5.25,
   8: 4.5,
 };
+const CAI_GRADE_LABELS = {
+  1: '一',
+  2: '二',
+  3: '三',
+  4: '四',
+  5: '五',
+  6: '六',
+  7: '七',
+  8: '八',
+};
+const BASE_CAI_GRADE = 8;
+const BASE_MODEL_SCALE = 10;
 
 function normalizeDimensionFeatureValue(value) {
   const parsed = Number.parseInt(value, 10);
@@ -42,6 +54,23 @@ function normalizeReservedFeatureValue(value) {
   const parsed = Number.parseInt(value, 10);
   if (Number.isNaN(parsed)) return caiGrade;
   return Math.min(Math.max(parsed, 1), 8);
+}
+
+function getCaiScaleFactor() {
+  return CAI_GRADE_VALUES[caiGrade] / CAI_GRADE_VALUES[BASE_CAI_GRADE];
+}
+
+function applyCaiGradeScale() {
+  const wrapper = document.getElementById('model-wrapper');
+  if (!wrapper) return;
+
+  const scale = BASE_MODEL_SCALE * getCaiScaleFactor();
+  wrapper.setAttribute('scale', `${scale} ${scale} ${scale}`);
+  if (activeDimensionFeature === 'unit-grid') {
+    refreshActiveDimensionFeature();
+    return;
+  }
+  if (window.x3dom) x3dom.reload();
 }
 
 function getDimensionDisplayCount() {
@@ -141,7 +170,7 @@ function refreshActiveDimensionFeature() {
     handleFeature(e);
   }
 
-  function createDateStepper({ input, stepper, getValue, setValue, normalize, onChange }) {
+  function createDateStepper({ input, stepper, getValue, setValue, normalize, formatValue = value => value, onChange }) {
     if (!input || !stepper) return null;
     const wheel = stepper.querySelector('.date-wheel');
     const countUp = stepper.querySelector('.date-step-up');
@@ -152,7 +181,7 @@ function refreshActiveDimensionFeature() {
       input.value = value;
       if (!wheel) return;
 
-      wheel.textContent = value;
+      wheel.textContent = formatValue(value);
       stepper.setAttribute('aria-valuenow', String(value));
       stepper.classList.remove('is-rolling-up', 'is-rolling-down');
 
@@ -236,6 +265,8 @@ function refreshActiveDimensionFeature() {
     getValue: () => caiGrade,
     setValue: value => { caiGrade = value; },
     normalize: normalizeReservedFeatureValue,
+    formatValue: value => CAI_GRADE_LABELS[value] ?? value,
+    onChange: applyCaiGradeScale,
   });
   document.addEventListener('click', () => setOpen(false));
 })();
@@ -252,7 +283,7 @@ function toggleUnitGrid() {
   if (!scene) return;
 
   const cells = getDimensionDisplayCount();
-  const cellSize = 2.4;
+  const cellSize = 2.4 * getCaiScaleFactor();
   const half = (cells * cellSize) / 2;
   const points = [];
   const pointIndex = new Map();
@@ -1518,6 +1549,7 @@ fetch('05-5-1.x3d')
       if (!skip) wrapper.appendChild(document.importNode(child, true));
     });
     targetScene.appendChild(wrapper);
+    applyCaiGradeScale();
     setTimeout(() => {
       initHighlightSystem();
       initHoverSystem();
