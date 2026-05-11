@@ -23,7 +23,7 @@ let dimensionFeatureValue = 3;
 function normalizeDimensionFeatureValue(value) {
   const parsed = Number.parseInt(value, 10);
   if (Number.isNaN(parsed)) return dimensionFeatureValue;
-  return Math.min(Math.max(parsed, 1), 12);
+  return Math.min(Math.max(parsed, 1), 8);
 }
 
 function getDimensionDisplayCount() {
@@ -41,15 +41,16 @@ function isDimensionFeatureVisible(feature) {
   const featureElementIds = {
     'unit-grid': 'unit-cube-grid',
     'axis-markers': 'xyz-axis-markers',
+    'axis-layer-planes': 'xyz-axis-layer-planes',
     'ground-projection': 'ground-projection',
     'ground-projection-copy': 'ground-projection-copy',
   };
 
-  return feature === 'feature-five' ? activeDimensionFeature === feature : !!document.getElementById(featureElementIds[feature]);
+  return !!document.getElementById(featureElementIds[feature]);
 }
 
 function clearDimensionFeatures() {
-  ['unit-cube-grid', 'xyz-axis-markers', 'ground-projection', 'ground-projection-copy'].forEach(id => {
+  ['unit-cube-grid', 'xyz-axis-markers', 'xyz-axis-layer-planes', 'ground-projection', 'ground-projection-copy'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.remove();
   });
@@ -65,9 +66,9 @@ function clearDimensionFeatures() {
 function activateDimensionFeature(feature) {
   if (feature === 'unit-grid') toggleUnitGrid();
   if (feature === 'axis-markers') toggleAxisMarkers();
+  if (feature === 'axis-layer-planes') toggleAxisLayerPlanes();
   if (feature === 'ground-projection') toggleGroundProjection();
   if (feature === 'ground-projection-copy') toggleGroundProjectionCopy();
-  if (feature === 'feature-five' && window.x3dom) x3dom.reload();
   setActiveDimensionFeature(feature);
 }
 
@@ -82,6 +83,10 @@ function refreshActiveDimensionFeature() {
   const bar = document.getElementById('model-bottom-bar');
   const lights = document.getElementById('feature-lights');
   const countInput = document.getElementById('feature-count');
+  const countStepper = document.getElementById('feature-count-stepper');
+  const countWheel = countStepper?.querySelector('.date-wheel');
+  const countUp = countStepper?.querySelector('.date-step-up');
+  const countDown = countStepper?.querySelector('.date-step-down');
   if (!bar || !lights) return;
 
   function setOpen(open) {
@@ -119,13 +124,34 @@ function refreshActiveDimensionFeature() {
     handleFeature(e);
   }
 
-  function updateFeatureCount() {
+  function renderFeatureCount(direction = 0) {
     if (!countInput) return;
-    const nextValue = normalizeDimensionFeatureValue(countInput.value);
+    countInput.value = dimensionFeatureValue;
+    if (!countStepper || !countWheel) return;
+
+    countWheel.textContent = dimensionFeatureValue;
+    countStepper.setAttribute('aria-valuenow', String(dimensionFeatureValue));
+    countStepper.classList.remove('is-rolling-up', 'is-rolling-down');
+
+    if (direction === 0) return;
+    void countStepper.offsetWidth;
+    countStepper.classList.add(direction > 0 ? 'is-rolling-up' : 'is-rolling-down');
+  }
+
+  function updateFeatureCount(value = countInput?.value, direction = 0) {
+    if (!countInput) return;
+    const currentValue = dimensionFeatureValue;
+    const nextValue = normalizeDimensionFeatureValue(value);
+    const animationDirection = direction || Math.sign(nextValue - currentValue);
     countInput.value = nextValue;
     if (nextValue === dimensionFeatureValue) return;
     dimensionFeatureValue = nextValue;
+    renderFeatureCount(animationDirection);
     refreshActiveDimensionFeature();
+  }
+
+  function stepFeatureCount(delta) {
+    updateFeatureCount(dimensionFeatureValue + delta, delta);
   }
 
   bar.addEventListener('click', toggleLights);
@@ -139,12 +165,41 @@ function refreshActiveDimensionFeature() {
   lights.addEventListener('click', handleFeature);
   lights.addEventListener('keydown', handleFeatureKey);
   if (countInput) {
-    countInput.value = dimensionFeatureValue;
+    renderFeatureCount();
     countInput.addEventListener('click', e => e.stopPropagation());
     countInput.addEventListener('keydown', e => e.stopPropagation());
-    countInput.addEventListener('change', updateFeatureCount);
-    countInput.addEventListener('input', updateFeatureCount);
+    countInput.addEventListener('change', () => updateFeatureCount());
+    countInput.addEventListener('input', () => updateFeatureCount());
   }
+  if (countStepper) {
+    countStepper.addEventListener('click', e => e.stopPropagation());
+    countStepper.addEventListener('keydown', e => {
+      e.stopPropagation();
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        stepFeatureCount(1);
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        stepFeatureCount(-1);
+      }
+      if (e.key === 'Home') {
+        e.preventDefault();
+        updateFeatureCount(1);
+      }
+      if (e.key === 'End') {
+        e.preventDefault();
+        updateFeatureCount(8);
+      }
+    });
+    countStepper.addEventListener('wheel', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      stepFeatureCount(e.deltaY < 0 ? 1 : -1);
+    }, { passive: false });
+  }
+  if (countUp) countUp.addEventListener('click', () => stepFeatureCount(1));
+  if (countDown) countDown.addEventListener('click', () => stepFeatureCount(-1));
   document.addEventListener('click', () => setOpen(false));
 })();
 
@@ -231,26 +286,20 @@ function toggleUnitGrid() {
 /* ─────────────────────────────────────────
    Highlight system: connect D3 nodes to X3D shapes
 ───────────────────────────────────────── */
-function toggleAxisMarkers() {
-  const existing = document.getElementById('xyz-axis-markers');
-  if (existing) {
-    existing.remove();
-    if (window.x3dom) x3dom.reload();
-    return;
-  }
-
+function buildAxisMarkers(id, includeYPlanes = false) {
   const scene = document.querySelector('scene');
   if (!scene) return;
 
   const group = document.createElement('transform');
-  group.id = 'xyz-axis-markers';
+  group.id = id;
   group.setAttribute('translation', '0 -16 0');
 
-  function createMaterial(color) {
+  function createMaterial(color, transparency = '0') {
     const appearance = document.createElement('appearance');
     const material = document.createElement('material');
     material.setAttribute('diffuseColor', color);
     material.setAttribute('emissiveColor', color);
+    material.setAttribute('transparency', transparency);
     appearance.appendChild(material);
     return appearance;
   }
@@ -285,12 +334,43 @@ function toggleAxisMarkers() {
     parent.appendChild(transform);
   }
 
+  function addLayerPlane(parent, y, size, color) {
+    const transform = document.createElement('transform');
+    const planeShape = document.createElement('shape');
+    const plane = document.createElement('box');
+    const edgeShape = document.createElement('shape');
+    const lineSet = document.createElement('indexedLineSet');
+    const coordinate = document.createElement('coordinate');
+    const halfSize = size / 2;
+
+    transform.setAttribute('translation', `0 ${y} 0`);
+    plane.setAttribute('size', `${size} 0.018 ${size}`);
+    planeShape.appendChild(createMaterial(color, '0.9'));
+    planeShape.appendChild(plane);
+
+    coordinate.setAttribute('point', [
+      `${-halfSize} 0.02 ${-halfSize}`,
+      `${halfSize} 0.02 ${-halfSize}`,
+      `${halfSize} 0.02 ${halfSize}`,
+      `${-halfSize} 0.02 ${halfSize}`,
+    ].join(' '));
+    lineSet.setAttribute('coordIndex', '0 1 2 3 0 -1');
+    edgeShape.appendChild(createMaterial(color, '0'));
+    lineSet.appendChild(coordinate);
+    edgeShape.appendChild(lineSet);
+
+    transform.appendChild(planeShape);
+    transform.appendChild(edgeShape);
+    parent.appendChild(transform);
+  }
+
   const displayCount = getDimensionDisplayCount();
   const step = 2;
   const length = 12;
   const half = length / 2;
   const xzHalf = (displayCount - 1) * step / 2;
   const xzLength = xzHalf * 2;
+  const planeSize = Math.max(xzLength, step);
   const red = '0.9 0.05 0.05';
   const green = '0.05 0.7 0.15';
   const blue = '0.05 0.25 0.95';
@@ -306,10 +386,33 @@ function toggleAxisMarkers() {
 
   for (let value = 0; value <= length; value += step) {
     addSphere(group, `0 ${value} 0`, green);
+    if (includeYPlanes) addLayerPlane(group, value, planeSize, green);
   }
 
   scene.appendChild(group);
   if (window.x3dom) x3dom.reload();
+}
+
+function toggleAxisMarkers() {
+  const existing = document.getElementById('xyz-axis-markers');
+  if (existing) {
+    existing.remove();
+    if (window.x3dom) x3dom.reload();
+    return;
+  }
+
+  buildAxisMarkers('xyz-axis-markers');
+}
+
+function toggleAxisLayerPlanes() {
+  const existing = document.getElementById('xyz-axis-layer-planes');
+  if (existing) {
+    existing.remove();
+    if (window.x3dom) x3dom.reload();
+    return;
+  }
+
+  buildAxisMarkers('xyz-axis-layer-planes', true);
 }
 
 let groundProjectionY = -16.02;
@@ -887,6 +990,9 @@ const SCATTER_OFFSET = {
 const SCATTER_OFFSET_BY_DEF = {
   '_01_Lu_Dou': [0.0, 0.0, 0.0],
   '_03_Xia_Ang': [0.0, 0.0, 1.2],
+  '_11_Mang_Gong': [-2.0, 0.0, -0.8],
+  '_17_Jiao_Hu_Dou': [1.6, 0.0, 0.0],
+  '_18_Jiao_Hu_Dou': [2.4, 0.0, 0.0],
   '_23_Fang':   [2.49, 0.0, -1.640001],
   '_25_XiaAng':  [-0.25, 0.0, 1.5],
 };
