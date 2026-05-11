@@ -117,6 +117,7 @@
     .feature-light:nth-child(3) { background: #62c76b; }
     .feature-light:nth-child(4) { background: #55a7e8; }
     .feature-light:nth-child(5) { background: #b875e8; }
+    .feature-light[data-feature="ground-projection-copy"] { background: #e35d5d; }
 
     /* ── Feature count date window ── */
     .feature-count-control {
@@ -128,7 +129,16 @@
       border-left: 1px solid rgba(255, 255, 255, 0.2);
     }
 
-    #feature-count {
+    .feature-count-control.is-left {
+      margin-left: 0;
+      margin-right: 4px;
+      padding-left: 0;
+      padding-right: 10px;
+      border-left: 0;
+      border-right: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .feature-count-control input[type="number"] {
       position: absolute;
       width: 42px;
       height: 26px;
@@ -434,6 +444,16 @@
       </scene>
     </x3d>
     <div id="feature-lights" aria-hidden="true">
+      <label class="feature-count-control is-left" title="材等">
+        <input id="reserved-feature-count" type="number" min="1" max="8" step="1" value="8" aria-label="材等">
+        <span class="date-stepper" id="reserved-feature-count-stepper" role="spinbutton" tabindex="0" aria-label="材等" aria-valuemin="1" aria-valuemax="8" aria-valuenow="8">
+          <button class="date-step date-step-up" type="button" aria-label="提高材等">▲</button>
+          <span class="date-window" aria-hidden="true">
+            <span class="date-wheel">8</span>
+          </span>
+          <button class="date-step date-step-down" type="button" aria-label="降低材等">▼</button>
+        </span>
+      </label>
       <span class="feature-light" role="button" tabindex="0" data-feature="unit-grid" title="6x6x6 立方格線"></span>
       <span class="feature-light" role="button" tabindex="0" data-feature="axis-markers" title="XYZ 軸標記"></span>
       <span class="feature-light" role="button" tabindex="0" data-feature="axis-layer-planes" title="XYZ 軸切層"></span>

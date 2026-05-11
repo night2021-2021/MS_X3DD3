@@ -19,10 +19,28 @@
 ───────────────────────────────────────── */
 let activeDimensionFeature = null;
 let dimensionFeatureValue = 3;
+let caiGrade = 8;
+
+const CAI_GRADE_VALUES = {
+  1: 9.0,
+  2: 8.25,
+  3: 7.5,
+  4: 7.2,
+  5: 6.6,
+  6: 6.0,
+  7: 5.25,
+  8: 4.5,
+};
 
 function normalizeDimensionFeatureValue(value) {
   const parsed = Number.parseInt(value, 10);
   if (Number.isNaN(parsed)) return dimensionFeatureValue;
+  return Math.min(Math.max(parsed, 1), 8);
+}
+
+function normalizeReservedFeatureValue(value) {
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed)) return caiGrade;
   return Math.min(Math.max(parsed, 1), 8);
 }
 
@@ -84,9 +102,8 @@ function refreshActiveDimensionFeature() {
   const lights = document.getElementById('feature-lights');
   const countInput = document.getElementById('feature-count');
   const countStepper = document.getElementById('feature-count-stepper');
-  const countWheel = countStepper?.querySelector('.date-wheel');
-  const countUp = countStepper?.querySelector('.date-step-up');
-  const countDown = countStepper?.querySelector('.date-step-down');
+  const reservedInput = document.getElementById('reserved-feature-count');
+  const reservedStepper = document.getElementById('reserved-feature-count-stepper');
   if (!bar || !lights) return;
 
   function setOpen(open) {
@@ -124,34 +141,75 @@ function refreshActiveDimensionFeature() {
     handleFeature(e);
   }
 
-  function renderFeatureCount(direction = 0) {
-    if (!countInput) return;
-    countInput.value = dimensionFeatureValue;
-    if (!countStepper || !countWheel) return;
+  function createDateStepper({ input, stepper, getValue, setValue, normalize, onChange }) {
+    if (!input || !stepper) return null;
+    const wheel = stepper.querySelector('.date-wheel');
+    const countUp = stepper.querySelector('.date-step-up');
+    const countDown = stepper.querySelector('.date-step-down');
 
-    countWheel.textContent = dimensionFeatureValue;
-    countStepper.setAttribute('aria-valuenow', String(dimensionFeatureValue));
-    countStepper.classList.remove('is-rolling-up', 'is-rolling-down');
+    function render(direction = 0) {
+      const value = getValue();
+      input.value = value;
+      if (!wheel) return;
 
-    if (direction === 0) return;
-    void countStepper.offsetWidth;
-    countStepper.classList.add(direction > 0 ? 'is-rolling-up' : 'is-rolling-down');
-  }
+      wheel.textContent = value;
+      stepper.setAttribute('aria-valuenow', String(value));
+      stepper.classList.remove('is-rolling-up', 'is-rolling-down');
 
-  function updateFeatureCount(value = countInput?.value, direction = 0) {
-    if (!countInput) return;
-    const currentValue = dimensionFeatureValue;
-    const nextValue = normalizeDimensionFeatureValue(value);
-    const animationDirection = direction || Math.sign(nextValue - currentValue);
-    countInput.value = nextValue;
-    if (nextValue === dimensionFeatureValue) return;
-    dimensionFeatureValue = nextValue;
-    renderFeatureCount(animationDirection);
-    refreshActiveDimensionFeature();
-  }
+      if (direction === 0) return;
+      void stepper.offsetWidth;
+      stepper.classList.add(direction > 0 ? 'is-rolling-up' : 'is-rolling-down');
+    }
 
-  function stepFeatureCount(delta) {
-    updateFeatureCount(dimensionFeatureValue + delta, delta);
+    function update(value = input.value, direction = 0) {
+      const currentValue = getValue();
+      const nextValue = normalize(value);
+      const animationDirection = direction || Math.sign(nextValue - currentValue);
+      input.value = nextValue;
+      if (nextValue === currentValue) return;
+      setValue(nextValue);
+      render(animationDirection);
+      if (onChange) onChange(nextValue);
+    }
+
+    function step(delta) {
+      update(getValue() + delta, delta);
+    }
+
+    render();
+    input.addEventListener('click', e => e.stopPropagation());
+    input.addEventListener('keydown', e => e.stopPropagation());
+    input.addEventListener('change', () => update());
+    input.addEventListener('input', () => update());
+    stepper.addEventListener('click', e => e.stopPropagation());
+    stepper.addEventListener('keydown', e => {
+      e.stopPropagation();
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        step(1);
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        step(-1);
+      }
+      if (e.key === 'Home') {
+        e.preventDefault();
+        update(1);
+      }
+      if (e.key === 'End') {
+        e.preventDefault();
+        update(8);
+      }
+    });
+    stepper.addEventListener('wheel', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      step(e.deltaY < 0 ? 1 : -1);
+    }, { passive: false });
+    if (countUp) countUp.addEventListener('click', () => step(1));
+    if (countDown) countDown.addEventListener('click', () => step(-1));
+
+    return { render, update, step };
   }
 
   bar.addEventListener('click', toggleLights);
@@ -164,42 +222,21 @@ function refreshActiveDimensionFeature() {
   lights.addEventListener('click', e => e.stopPropagation());
   lights.addEventListener('click', handleFeature);
   lights.addEventListener('keydown', handleFeatureKey);
-  if (countInput) {
-    renderFeatureCount();
-    countInput.addEventListener('click', e => e.stopPropagation());
-    countInput.addEventListener('keydown', e => e.stopPropagation());
-    countInput.addEventListener('change', () => updateFeatureCount());
-    countInput.addEventListener('input', () => updateFeatureCount());
-  }
-  if (countStepper) {
-    countStepper.addEventListener('click', e => e.stopPropagation());
-    countStepper.addEventListener('keydown', e => {
-      e.stopPropagation();
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        stepFeatureCount(1);
-      }
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        stepFeatureCount(-1);
-      }
-      if (e.key === 'Home') {
-        e.preventDefault();
-        updateFeatureCount(1);
-      }
-      if (e.key === 'End') {
-        e.preventDefault();
-        updateFeatureCount(8);
-      }
-    });
-    countStepper.addEventListener('wheel', e => {
-      e.preventDefault();
-      e.stopPropagation();
-      stepFeatureCount(e.deltaY < 0 ? 1 : -1);
-    }, { passive: false });
-  }
-  if (countUp) countUp.addEventListener('click', () => stepFeatureCount(1));
-  if (countDown) countDown.addEventListener('click', () => stepFeatureCount(-1));
+  createDateStepper({
+    input: countInput,
+    stepper: countStepper,
+    getValue: () => dimensionFeatureValue,
+    setValue: value => { dimensionFeatureValue = value; },
+    normalize: normalizeDimensionFeatureValue,
+    onChange: refreshActiveDimensionFeature,
+  });
+  createDateStepper({
+    input: reservedInput,
+    stepper: reservedStepper,
+    getValue: () => caiGrade,
+    setValue: value => { caiGrade = value; },
+    normalize: normalizeReservedFeatureValue,
+  });
   document.addEventListener('click', () => setOpen(false));
 })();
 
