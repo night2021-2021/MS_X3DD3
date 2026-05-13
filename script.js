@@ -126,6 +126,19 @@ function refreshActiveDimensionFeature() {
   activateDimensionFeature(feature);
 }
 
+function getLuDouBottomY() {
+  const wrapper = document.getElementById('model-wrapper');
+  const luDou = document.querySelector('[DEF="_01_Lu_Dou_TRANSFORM"]');
+  const wrapperTranslation = wrapper ? parseVec3(wrapper.getAttribute('translation')) : [0, -10, 0];
+  const wrapperScale = wrapper ? parseVec3(wrapper.getAttribute('scale')) : [BASE_MODEL_SCALE * getCaiScaleFactor()];
+  const luDouTranslation = luDou ? parseVec3(luDou.getAttribute('translation')) : [0, -0.442880, 0];
+  const wrapperY = Number.isFinite(wrapperTranslation[1]) ? wrapperTranslation[1] : -10;
+  const scaleY = Number.isFinite(wrapperScale[1]) ? wrapperScale[1] : (BASE_MODEL_SCALE * getCaiScaleFactor());
+  const luDouY = Number.isFinite(luDouTranslation[1]) ? luDouTranslation[1] : -0.442880;
+
+  return wrapperY + scaleY * luDouY;
+}
+
 (function initFeatureLights() {
   const bar = document.getElementById('model-bottom-bar');
   const lights = document.getElementById('feature-lights');
@@ -285,6 +298,9 @@ function toggleUnitGrid() {
   const cells = getDimensionDisplayCount();
   const cellSize = 2.4 * getCaiScaleFactor();
   const half = (cells * cellSize) / 2;
+  const frontZ = half + cellSize * 0.18;
+  const labelOffset = cellSize * 0.34;
+  const labelSize = cellSize * 0.24;
   const points = [];
   const pointIndex = new Map();
   const segments = [];
@@ -328,7 +344,7 @@ function toggleUnitGrid() {
 
   const transform = document.createElement('transform');
   transform.id = 'unit-cube-grid';
-  transform.setAttribute('translation', '-0.134631 -14.428800 0.011413');
+  transform.setAttribute('translation', `-0.134631 ${getLuDouBottomY().toFixed(6)} 0.011413`);
 
   const shape = document.createElement('shape');
   const appearance = document.createElement('appearance');
@@ -346,6 +362,38 @@ function toggleUnitGrid() {
   shape.appendChild(appearance);
   shape.appendChild(lineSet);
   transform.appendChild(shape);
+
+  function createGridLabel(value, x, y, z) {
+    const labelTransform = document.createElement('transform');
+    const labelShape = document.createElement('shape');
+    const labelAppearance = document.createElement('appearance');
+    const labelMaterial = document.createElement('material');
+    const text = document.createElement('text');
+    const fontStyle = document.createElement('fontStyle');
+
+    labelTransform.setAttribute('translation', `${x} ${y} ${z}`);
+    labelMaterial.setAttribute('diffuseColor', '0 0 0');
+    labelMaterial.setAttribute('emissiveColor', '0 0 0');
+    text.setAttribute('string', `"${value}"`);
+    fontStyle.setAttribute('size', String(labelSize));
+    fontStyle.setAttribute('family', '"Times New Roman"');
+    fontStyle.setAttribute('justify', '"MIDDLE" "MIDDLE"');
+
+    text.appendChild(fontStyle);
+    labelAppearance.appendChild(labelMaterial);
+    labelShape.appendChild(labelAppearance);
+    labelShape.appendChild(text);
+    labelTransform.appendChild(labelShape);
+    transform.appendChild(labelTransform);
+  }
+
+  for (let value = 1; value <= cells; value += 2) {
+    const offsetFromOrigin = value * cellSize;
+    createGridLabel(value, -half + offsetFromOrigin, -labelOffset, frontZ);
+    createGridLabel(value, -half - labelOffset, offsetFromOrigin, frontZ);
+    createGridLabel(value, -half - labelOffset, -labelOffset, half - offsetFromOrigin);
+  }
+
   scene.appendChild(transform);
   if (window.x3dom) x3dom.reload();
 }
