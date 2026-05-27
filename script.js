@@ -176,6 +176,19 @@ function refreshActiveDimensionFeature() {
   activateDimensionFeature(feature);
 }
 
+function getLuDouBottomY() {
+  const wrapper = document.getElementById('model-wrapper');
+  const luDou = document.querySelector('[DEF="_01_Lu_Dou_TRANSFORM"]');
+  const wrapperTranslation = wrapper ? parseVec3(wrapper.getAttribute('translation')) : [0, -10, 0];
+  const wrapperScale = wrapper ? parseVec3(wrapper.getAttribute('scale')) : [BASE_MODEL_SCALE * getCaiScaleFactor()];
+  const luDouTranslation = luDou ? parseVec3(luDou.getAttribute('translation')) : [0, -0.442880, 0];
+  const wrapperY = Number.isFinite(wrapperTranslation[1]) ? wrapperTranslation[1] : -10;
+  const scaleY = Number.isFinite(wrapperScale[1]) ? wrapperScale[1] : (BASE_MODEL_SCALE * getCaiScaleFactor());
+  const luDouY = Number.isFinite(luDouTranslation[1]) ? luDouTranslation[1] : -0.442880;
+
+  return wrapperY + scaleY * luDouY;
+}
+
 (function initFeatureLights() {
   const bar = document.getElementById('model-bottom-bar');
   const lights = document.getElementById('feature-lights');
