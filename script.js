@@ -43,6 +43,9 @@ const CAI_GRADE_LABELS = {
 };
 const BASE_CAI_GRADE = 8;
 const BASE_MODEL_SCALE = 10;
+const BASE_MODEL_TRANSLATION = [0, -10, 0];
+const DIMENSION_BASE_Y = -14.428800;
+let assembledModelLocalBottomY = null;
 
 function normalizeDimensionFeatureValue(value) {
   const parsed = Number.parseInt(value, 10);
@@ -65,8 +68,11 @@ function applyCaiGradeScale() {
   if (!wrapper) return;
 
   const scale = BASE_MODEL_SCALE * getCaiScaleFactor();
+  const localBottomY = getAssembledModelLocalBottomY();
+  const translationY = BASE_MODEL_TRANSLATION[1] + (BASE_MODEL_SCALE - scale) * localBottomY;
   wrapper.setAttribute('scale', `${scale} ${scale} ${scale}`);
-  if (activeDimensionFeature === 'unit-grid') {
+  wrapper.setAttribute('translation', `${BASE_MODEL_TRANSLATION[0]} ${translationY} ${BASE_MODEL_TRANSLATION[2]}`);
+  if (isMeasurementFeature(activeDimensionFeature)) {
     refreshActiveDimensionFeature();
     return;
   }
@@ -77,11 +83,55 @@ function getDimensionDisplayCount() {
   return dimensionFeatureValue * 2 - 1;
 }
 
+function getFenGridMajorCellSize() {
+  const baseMajorCellSize = 2.4;
+  return fenMeasurementMode === 'relative'
+    ? baseMajorCellSize * getCaiScaleFactor()
+    : baseMajorCellSize;
+}
+
+function getFenGridMajorLineRadius() {
+  const baseRadius = 0.018;
+  return fenMeasurementMode === 'relative'
+    ? baseRadius * getCaiScaleFactor()
+    : baseRadius;
+}
+
+function getDimensionMeasurementScale() {
+  return fenMeasurementMode === 'relative' ? getCaiScaleFactor() : 1;
+}
+
+function getDimensionStepSize() {
+  return 2 * getDimensionMeasurementScale();
+}
+
+function getDimensionAxisLength() {
+  return 12 * getDimensionMeasurementScale();
+}
+
+function isMeasurementFeature(feature) {
+  return [
+    'unit-grid',
+    'axis-markers',
+    'axis-layer-planes',
+    'ground-projection',
+    'ground-projection-copy',
+  ].includes(feature);
+}
+
+function setFenToggleVisibility(visible) {
+  ['fen-grid-toggle', 'fen-subgrid-toggle'].forEach(id => {
+    const toggle = document.getElementById(id);
+    if (toggle) toggle.classList.toggle('is-visible', visible);
+  });
+}
+
 function setActiveDimensionFeature(feature) {
   activeDimensionFeature = feature;
   document.querySelectorAll('.feature-light').forEach(light => {
     light.classList.toggle('is-active', light.dataset.feature === feature);
   });
+  setFenToggleVisibility(isMeasurementFeature(feature));
 }
 
 function isDimensionFeatureVisible(feature) {
@@ -282,70 +332,129 @@ function toggleUnitGrid() {
   const scene = document.querySelector('scene');
   if (!scene) return;
 
-  const cells = getDimensionDisplayCount();
-  const cellSize = 2.4 * getCaiScaleFactor();
-  const half = (cells * cellSize) / 2;
-  const points = [];
-  const pointIndex = new Map();
-  const segments = [];
-
-  function getPointIndex(x, y, z) {
-    const key = `${x},${y},${z}`;
-    if (!pointIndex.has(key)) {
-      pointIndex.set(key, points.length);
-      points.push(`${x * cellSize - half} ${y * cellSize} ${z * cellSize - half}`);
-    }
-    return pointIndex.get(key);
-  }
-
-  function addSegment(a, b) {
-    segments.push(`${a} ${b} -1`);
-  }
-
-  for (let x = 0; x <= cells; x++) {
-    for (let y = 0; y <= cells; y++) {
-      for (let z = 0; z < cells; z++) {
-        addSegment(getPointIndex(x, y, z), getPointIndex(x, y, z + 1));
-      }
-    }
-  }
-
-  for (let x = 0; x <= cells; x++) {
-    for (let z = 0; z <= cells; z++) {
-      for (let y = 0; y < cells; y++) {
-        addSegment(getPointIndex(x, y, z), getPointIndex(x, y + 1, z));
-      }
-    }
-  }
-
-  for (let y = 0; y <= cells; y++) {
-    for (let z = 0; z <= cells; z++) {
-      for (let x = 0; x < cells; x++) {
-        addSegment(getPointIndex(x, y, z), getPointIndex(x + 1, y, z));
-      }
-    }
-  }
+  const footCaiFen = 21;
+  const majorCells = getDimensionDisplayCount();
+  const majorCellSize = getFenGridMajorCellSize();
+  const fenSize = majorCellSize / footCaiFen;
+  const fenDivisions = majorCells * footCaiFen;
+  const fullSize = majorCells * majorCellSize;
+  const half = fullSize / 2;
 
   const transform = document.createElement('transform');
   transform.id = 'unit-cube-grid';
-  transform.setAttribute('translation', '-0.134631 -14.428800 0.011413');
+  transform.setAttribute('translation', `-0.134631 ${DIMENSION_BASE_Y} 0.011413`);
 
-  const shape = document.createElement('shape');
-  const appearance = document.createElement('appearance');
-  const material = document.createElement('material');
-  const lineSet = document.createElement('indexedLineSet');
-  const coordinate = document.createElement('coordinate');
+  function createMaterial(color, transparency = '0') {
+    const appearance = document.createElement('appearance');
+    const material = document.createElement('material');
+    material.setAttribute('diffuseColor', color);
+    material.setAttribute('emissiveColor', color);
+    material.setAttribute('transparency', transparency);
+    appearance.appendChild(material);
+    return appearance;
+  }
 
-  material.setAttribute('emissiveColor', '0 0 0');
-  material.setAttribute('diffuseColor', '0 0 0');
-  lineSet.setAttribute('coordIndex', segments.join(' '));
-  coordinate.setAttribute('point', points.join(' '));
+  function toCoord(index, centered = false) {
+    const value = index * fenSize;
+    return centered ? value - half : value;
+  }
 
-  appearance.appendChild(material);
-  lineSet.appendChild(coordinate);
-  shape.appendChild(appearance);
-  shape.appendChild(lineSet);
-  transform.appendChild(shape);
+  function isMajorFen(index) {
+    return index % footCaiFen === 0;
+  }
+
+  function addFineFenGrid() {
+    const points = [];
+    const segments = [];
+
+    function addLine(a, b) {
+      const start = points.length;
+      points.push(a, b);
+      segments.push(`${start} ${start + 1} -1`);
+    }
+
+    for (let y = 0; y <= fenDivisions; y++) {
+      for (let z = 0; z <= fenDivisions; z++) {
+        if (isMajorFen(y) && isMajorFen(z)) continue;
+        addLine(
+          `${-half} ${toCoord(y)} ${toCoord(z, true)}`,
+          `${half} ${toCoord(y)} ${toCoord(z, true)}`
+        );
+      }
+    }
+
+    for (let x = 0; x <= fenDivisions; x++) {
+      for (let z = 0; z <= fenDivisions; z++) {
+        if (isMajorFen(x) && isMajorFen(z)) continue;
+        addLine(
+          `${toCoord(x, true)} 0 ${toCoord(z, true)}`,
+          `${toCoord(x, true)} ${fullSize} ${toCoord(z, true)}`
+        );
+      }
+    }
+
+    for (let x = 0; x <= fenDivisions; x++) {
+      for (let y = 0; y <= fenDivisions; y++) {
+        if (isMajorFen(x) && isMajorFen(y)) continue;
+        addLine(
+          `${toCoord(x, true)} ${toCoord(y)} ${-half}`,
+          `${toCoord(x, true)} ${toCoord(y)} ${half}`
+        );
+      }
+    }
+
+    const shape = document.createElement('shape');
+    const lineSet = document.createElement('indexedLineSet');
+    const coordinate = document.createElement('coordinate');
+
+    lineSet.setAttribute('coordIndex', segments.join(' '));
+    coordinate.setAttribute('point', points.join(' '));
+    lineSet.appendChild(coordinate);
+    shape.setAttribute('data-fen-grid-lines', 'true');
+    shape.setAttribute('render', String(fineFenGridVisible));
+    shape.appendChild(createMaterial('0.34 0.34 0.34', '0.58'));
+    shape.appendChild(lineSet);
+    transform.appendChild(shape);
+  }
+
+  function addMajorFenLine(translation, rotation) {
+    const lineTransform = document.createElement('transform');
+    const shape = document.createElement('shape');
+    const cylinder = document.createElement('cylinder');
+
+    lineTransform.setAttribute('translation', translation);
+    if (rotation) lineTransform.setAttribute('rotation', rotation);
+    cylinder.setAttribute('radius', String(getFenGridMajorLineRadius()));
+    cylinder.setAttribute('height', String(fullSize));
+
+    shape.appendChild(createMaterial('0 0 0'));
+    shape.appendChild(cylinder);
+    lineTransform.appendChild(shape);
+    transform.appendChild(lineTransform);
+  }
+
+  function addMajorFenGrid() {
+    for (let y = 0; y <= fenDivisions; y += footCaiFen) {
+      for (let z = 0; z <= fenDivisions; z += footCaiFen) {
+        addMajorFenLine(`0 ${toCoord(y)} ${toCoord(z, true)}`, '0 0 1 1.5708');
+      }
+    }
+
+    for (let x = 0; x <= fenDivisions; x += footCaiFen) {
+      for (let z = 0; z <= fenDivisions; z += footCaiFen) {
+        addMajorFenLine(`${toCoord(x, true)} ${half} ${toCoord(z, true)}`, null);
+      }
+    }
+
+    for (let x = 0; x <= fenDivisions; x += footCaiFen) {
+      for (let y = 0; y <= fenDivisions; y += footCaiFen) {
+        addMajorFenLine(`${toCoord(x, true)} ${toCoord(y)} 0`, '1 0 0 1.5708');
+      }
+    }
+  }
+
+  addFineFenGrid();
+  addMajorFenGrid();
   scene.appendChild(transform);
   if (window.x3dom) x3dom.reload();
 }
@@ -360,7 +469,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
 
   const group = document.createElement('transform');
   group.id = id;
-  group.setAttribute('translation', '0 -16 0');
+  group.setAttribute('translation', `0 ${DIMENSION_BASE_Y} 0`);
 
   function createMaterial(color, transparency = '0') {
     const appearance = document.createElement('appearance');
@@ -388,13 +497,17 @@ function buildAxisMarkers(id, includeYPlanes = false) {
     parent.appendChild(transform);
   }
 
-  function addSphere(parent, translation, color) {
+  function addSphere(parent, translation, color, radius = '0.18', isFinePoint = false) {
     const transform = document.createElement('transform');
     const shape = document.createElement('shape');
     const sphere = document.createElement('sphere');
 
     transform.setAttribute('translation', translation);
-    sphere.setAttribute('radius', '0.18');
+    if (isFinePoint) {
+      transform.setAttribute('data-fen-grid-lines', 'true');
+      transform.setAttribute('render', String(fineFenGridVisible));
+    }
+    sphere.setAttribute('radius', String(radius));
 
     shape.appendChild(createMaterial(color));
     shape.appendChild(sphere);
@@ -433,8 +546,8 @@ function buildAxisMarkers(id, includeYPlanes = false) {
   }
 
   const displayCount = getDimensionDisplayCount();
-  const step = 2;
-  const length = 12;
+  const step = getDimensionStepSize();
+  const length = getDimensionAxisLength();
   const half = length / 2;
   const xzHalf = (displayCount - 1) * step / 2;
   const xzLength = xzHalf * 2;
@@ -450,6 +563,15 @@ function buildAxisMarkers(id, includeYPlanes = false) {
   for (let value = -xzHalf; value <= xzHalf; value += step) {
     addSphere(group, `${value} 0 0`, red);
     addSphere(group, `0 0 ${value}`, blue);
+  }
+
+  const fineDivisions = (displayCount - 1) * 21;
+  const fineStep = step / 21;
+  for (let i = 0; i <= fineDivisions; i++) {
+    if (i % 21 === 0) continue;
+    const value = -xzHalf + i * fineStep;
+    addSphere(group, `${value} 0 0`, red, '0.055', true);
+    addSphere(group, `0 0 ${value}`, blue, '0.055', true);
   }
 
   for (let value = 0; value <= length; value += step) {
@@ -580,7 +702,7 @@ function toggleGroundProjection() {
   const scene = document.querySelector('scene');
   if (!scene) return;
 
-  const step = 2;
+  const step = getDimensionStepSize();
   const displayCount = getDimensionDisplayCount();
   const half = (displayCount - 1) * step / 2;
   const size = Math.max(half * 2, step);
@@ -811,7 +933,7 @@ function toggleGroundProjectionCopy() {
   const scene = document.querySelector('scene');
   if (!scene) return;
 
-  const step = 2;
+  const step = getDimensionStepSize();
   const displayCount = getDimensionDisplayCount();
   const half = (displayCount - 1) * step / 2;
   const size = Math.max(half * 2, step);
@@ -941,11 +1063,14 @@ function getComponentWorldPosition(defName) {
 
   const local = parseVec3(transform.getAttribute('translation'));
   if (local.length < 3 || local.some(Number.isNaN)) return null;
+  const wrapper = document.getElementById('model-wrapper');
+  const wrapperScale = parseVec3(wrapper?.getAttribute('scale') || `${BASE_MODEL_SCALE} ${BASE_MODEL_SCALE} ${BASE_MODEL_SCALE}`);
+  const wrapperTranslation = parseVec3(wrapper?.getAttribute('translation') || BASE_MODEL_TRANSLATION.join(' '));
 
   return {
-    x: local[0] * 10,
-    y: local[1] * 10 - 10,
-    z: local[2] * 10,
+    x: local[0] * wrapperScale[0] + wrapperTranslation[0],
+    y: local[1] * wrapperScale[1] + wrapperTranslation[1],
+    z: local[2] * wrapperScale[2] + wrapperTranslation[2],
   };
 }
 
@@ -981,7 +1106,9 @@ function applyGroundProjectionCopySection() {
     modelWrapper.insertBefore(clipPlane, modelWrapper.firstChild);
   }
 
-  const localClipY = (groundProjectionCopyY + 10) / 10;
+  const wrapperScale = parseVec3(modelWrapper.getAttribute('scale') || `${BASE_MODEL_SCALE} ${BASE_MODEL_SCALE} ${BASE_MODEL_SCALE}`);
+  const wrapperTranslation = parseVec3(modelWrapper.getAttribute('translation') || BASE_MODEL_TRANSLATION.join(' '));
+  const localClipY = (groundProjectionCopyY - wrapperTranslation[1]) / wrapperScale[1];
   clipPlane.setAttribute('plane', `0 1 0 ${-localClipY}`);
   if (window.x3dom) x3dom.reload();
 }
@@ -1027,6 +1154,39 @@ const ASSEMBLED_POS = {
   '_23_Fang':        [-0.063463,  0.097120,  0.281142],
   '_24_Fang':        [ 0.336537,  0.097120, -0.277692],
 };
+
+function getGeometryLocalMinY(transform) {
+  const group = getGeometryGroupForPart(transform);
+  if (!group) return 0;
+
+  let minY = Infinity;
+  group.querySelectorAll('Coordinate[point], coordinate[point]').forEach(coordinate => {
+    const values = coordinate.getAttribute('point').trim().split(/\s+/).map(Number);
+    for (let i = 1; i < values.length; i += 3) {
+      if (!Number.isNaN(values[i])) minY = Math.min(minY, values[i]);
+    }
+  });
+
+  return Number.isFinite(minY) ? minY : 0;
+}
+
+function getAssembledModelLocalBottomY() {
+  if (assembledModelLocalBottomY !== null) return assembledModelLocalBottomY;
+
+  let minY = Infinity;
+  Object.entries(ASSEMBLED_POS).forEach(([name, assembledPosition]) => {
+    const transform = document.querySelector(`[DEF="${name}_TRANSFORM"]`);
+    if (!transform) return;
+
+    const scale = parseVec3(transform.getAttribute('scale') || '1 1 1');
+    const sy = Number.isFinite(scale[1]) ? scale[1] : 1;
+    const geometryMinY = getGeometryLocalMinY(transform);
+    minY = Math.min(minY, assembledPosition[1] + sy * geometryMinY);
+  });
+
+  assembledModelLocalBottomY = Number.isFinite(minY) ? minY : 0;
+  return assembledModelLocalBottomY;
+}
 
 const LAYER_DEFS = [
   ['_01_Lu_Dou'],
@@ -1329,8 +1489,60 @@ function initHoverSystem() {
   });
 }
 
+let fineFenGridVisible = true;
+let fenMeasurementMode = 'relative';
 let boundingBoxesVisible = false;
-let modelHiddenForBoundingBoxes = false;
+let modelGeometryVisible = true;
+
+function setFineFenGridVisible(visible) {
+  fineFenGridVisible = visible;
+
+  const toggle = document.getElementById('fen-grid-toggle');
+  if (toggle) {
+    toggle.classList.toggle('is-active', visible);
+    toggle.setAttribute('aria-pressed', String(visible));
+    toggle.textContent = visible ? 'ON' : 'OFF';
+  }
+
+  document.querySelectorAll('[data-fen-grid-lines="true"]').forEach(el => {
+    el.setAttribute('render', String(visible));
+  });
+
+  if (window.x3dom) x3dom.reload();
+}
+
+function initFineFenGridToggle() {
+  const toggle = document.getElementById('fen-grid-toggle');
+  if (!toggle) return;
+
+  setFineFenGridVisible(fineFenGridVisible);
+  toggle.addEventListener('click', () => {
+    setFineFenGridVisible(!fineFenGridVisible);
+  });
+}
+
+initFineFenGridToggle();
+
+function initFenSubgridToggle() {
+  const toggle = document.getElementById('fen-subgrid-toggle');
+  if (!toggle) return;
+
+  function render() {
+    const isAbsolute = fenMeasurementMode === 'absolute';
+    toggle.textContent = isAbsolute ? '分' : '份';
+    toggle.classList.toggle('is-active', isAbsolute);
+    toggle.setAttribute('aria-pressed', String(isAbsolute));
+  }
+
+  render();
+  toggle.addEventListener('click', () => {
+    fenMeasurementMode = fenMeasurementMode === 'relative' ? 'absolute' : 'relative';
+    render();
+    if (isMeasurementFeature(activeDimensionFeature)) refreshActiveDimensionFeature();
+  });
+}
+
+initFenSubgridToggle();
 
 function getGeometryGroupForPart(transform) {
   const group = transform.querySelector('Group');
@@ -1456,7 +1668,7 @@ function renderBoundingBoxes() {
     if (transform) createBoundingBox(transform);
   });
 
-  if (modelHiddenForBoundingBoxes) applyModelGeometryVisibility(false);
+  if (!modelGeometryVisible) applyModelGeometryVisibility(false);
   if (window.x3dom) x3dom.reload();
 }
 
@@ -1477,17 +1689,17 @@ function applyModelGeometryVisibility(visible) {
   });
 }
 
-function setModelHiddenForBoundingBoxes(hidden) {
-  modelHiddenForBoundingBoxes = hidden;
+function setModelGeometryVisible(visible) {
+  modelGeometryVisible = visible;
 
   const toggle = document.getElementById('model-visibility-toggle');
   if (toggle) {
-    toggle.classList.toggle('is-active', hidden);
-    toggle.setAttribute('aria-pressed', String(hidden));
+    toggle.classList.toggle('is-active', visible);
+    toggle.setAttribute('aria-pressed', String(visible));
+    toggle.setAttribute('title', 'Model');
   }
 
-  if (hidden && !boundingBoxesVisible) setBoundingBoxesVisible(true);
-  applyModelGeometryVisibility(!hidden);
+  applyModelGeometryVisibility(visible);
   if (window.x3dom) x3dom.reload();
 }
 
@@ -1502,7 +1714,6 @@ function setBoundingBoxesVisible(visible) {
 
   if (visible) renderBoundingBoxes();
   else {
-    if (modelHiddenForBoundingBoxes) setModelHiddenForBoundingBoxes(false);
     removeBoundingBoxes();
   }
 }
@@ -1522,8 +1733,9 @@ function initModelVisibilityToggle() {
   const toggle = document.getElementById('model-visibility-toggle');
   if (!toggle) return;
 
+  setModelGeometryVisible(modelGeometryVisible);
   toggle.addEventListener('click', () => {
-    setModelHiddenForBoundingBoxes(!modelHiddenForBoundingBoxes);
+    setModelGeometryVisible(!modelGeometryVisible);
   });
 }
 
@@ -1542,7 +1754,7 @@ fetch('05-5-1.x3d')
     const wrapper = document.createElement('transform');
     wrapper.id = 'model-wrapper';
     wrapper.setAttribute('scale', '10 10 10');
-    wrapper.setAttribute('translation', '0 -10 0');
+    wrapper.setAttribute('translation', BASE_MODEL_TRANSLATION.join(' '));
 
     Array.from(srcScene.children).forEach(child => {
       const skip = ['NavigationInfo','Background'].includes(child.tagName);
@@ -1559,6 +1771,7 @@ fetch('05-5-1.x3d')
       layerNavReady = true;
       updateLayerNavButtons();
       if (boundingBoxesVisible) renderBoundingBoxes();
+      applyModelGeometryVisibility(modelGeometryVisible);
     }, 300);
   })
   .catch(err => console.error('X3D load failed:', err));

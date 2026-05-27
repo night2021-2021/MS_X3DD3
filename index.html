@@ -286,6 +286,27 @@
       left: 52px;
     }
 
+    #fen-grid-toggle {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 7;
+      display: none;
+    }
+
+    #fen-subgrid-toggle {
+      position: absolute;
+      top: 12px;
+      left: 52px;
+      z-index: 7;
+      display: none;
+    }
+
+    #fen-grid-toggle.is-visible,
+    #fen-subgrid-toggle.is-visible {
+      display: block;
+    }
+
     .graph-toggle:hover {
       background: #3b4a60;
       border-color: #63b3ed;
@@ -454,7 +475,7 @@
           <button class="date-step date-step-down" type="button" aria-label="降低材等">▼</button>
         </span>
       </label>
-      <span class="feature-light" role="button" tabindex="0" data-feature="unit-grid" title="6x6x6 立方格線"></span>
+      <span class="feature-light" role="button" tabindex="0" data-feature="unit-grid" title="立方格線"></span>
       <span class="feature-light" role="button" tabindex="0" data-feature="axis-markers" title="XYZ 軸標記"></span>
       <span class="feature-light" role="button" tabindex="0" data-feature="axis-layer-planes" title="XYZ 軸切層"></span>
       <span class="feature-light" role="button" tabindex="0" data-feature="ground-projection" title="地面投影"></span>
@@ -470,6 +491,8 @@
         </span>
       </label>
     </div>
+    <button id="fen-grid-toggle" class="graph-toggle is-active" type="button" aria-pressed="true" title="細線">ON</button>
+    <button id="fen-subgrid-toggle" class="graph-toggle" type="button" aria-pressed="false" title="衡量標準">份</button>
     <div id="model-bottom-bar" role="button" tabindex="0" aria-label="功能選單" aria-expanded="false"></div>
   </div>
 
