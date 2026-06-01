@@ -642,7 +642,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
 
   yNodeValues.forEach((value, index) => {
     addSphere(group, `0 ${value} 0`, green);
-    addAxisLabel(group, yNodeFenValues[index], `${0.55} ${value} ${0.55}`, green, '0 1 0 0');
+    addAxisLabel(group, yNodeFenValues[index], `${xzHalf + 0.72} ${value} ${xzHalf + 0.72}`, green, '0 1 0 0');
     if (includeYPlanes) addLayerPlane(group, 'y', value, planeSize, planeHeight, green);
   });
 
@@ -1243,6 +1243,7 @@ const HI_EMISSIVE  = '0.35 0.18 0.0';
 // defName → owned Material elements (USE replaced with real nodes)
 const matMap = {};
 let hlReady = false;
+let selectedMovableName = null;
 let selectedType = null;   // 目前 click 選取的 type
 let hoverName    = null;   // 目前 hover 中的 defName
 
@@ -1298,6 +1299,7 @@ window.clearHighlight = function () {
     mat.setAttribute('diffuseColor',  ORIG_DIFFUSE);
     mat.setAttribute('emissiveColor', '0 0 0');
   });
+  if (selectedMovableName) applyMats(selectedMovableName, true);
 };
 
 // ── Hover highlight helpers ──
@@ -1311,10 +1313,82 @@ function applyMats(name, hi) {
 // Restore one defName to its correct state after hover-out
 function restoreMats(name) {
   const inSelected = selectedType && (TYPE_DEFS[selectedType] || []).includes(name);
-  applyMats(name, inSelected);
+  applyMats(name, inSelected || selectedMovableName === name);
 }
 
 // ── DEF display names ──
+function selectMovablePart(name) {
+  selectedType = null;
+  Object.values(matMap).flat().forEach(mat => {
+    mat.setAttribute('diffuseColor', ORIG_DIFFUSE);
+    mat.setAttribute('emissiveColor', '0 0 0');
+  });
+  hoverName = name;
+  selectedMovableName = name;
+  applyMats(name, true);
+}
+
+function clearMovablePartSelection() {
+  if (!selectedMovableName) return;
+  const previousName = selectedMovableName;
+  selectedMovableName = null;
+  restoreMats(previousName);
+}
+
+function getWrapperAxisScale(axis) {
+  const wrapper = document.getElementById('model-wrapper');
+  const scale = parseVec3(wrapper?.getAttribute('scale') || `${BASE_MODEL_SCALE} ${BASE_MODEL_SCALE} ${BASE_MODEL_SCALE}`);
+  return Number.isFinite(scale[axis]) && scale[axis] !== 0 ? scale[axis] : BASE_MODEL_SCALE;
+}
+
+function moveSelectedPart(delta) {
+  if (!selectedMovableName) return;
+  const transform = document.querySelector(`[DEF="${selectedMovableName}_TRANSFORM"]`);
+  if (!transform) return;
+
+  const position = parseVec3(transform.getAttribute('translation'));
+  if (position.length < 3 || position.some(Number.isNaN)) return;
+
+  const worldStep = getAbsoluteDimensionFenSize();
+  const nextPosition = position.map((value, axis) =>
+    value + (delta[axis] * worldStep) / getWrapperAxisScale(axis)
+  );
+
+  transform.setAttribute('translation', nextPosition.map(value => value.toFixed(6)).join(' '));
+  _animCur[selectedMovableName] = nextPosition;
+  if (document.getElementById('ground-projection-copy')) applyGroundProjectionCopySection();
+  if (boundingBoxesVisible) renderBoundingBoxes();
+  else if (window.x3dom) x3dom.reload();
+}
+
+function initMovablePartKeyboard() {
+  document.addEventListener('keydown', e => {
+    if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+    if (e.key === 'Escape') {
+      clearMovablePartSelection();
+      return;
+    }
+    if (!selectedMovableName) return;
+
+    const key = e.key.toLowerCase();
+    const deltas = {
+      w: [0, 0, -1],
+      s: [0, 0, 1],
+      a: [-1, 0, 0],
+      d: [1, 0, 0],
+      q: [0, -1, 0],
+      e: [0, 1, 0],
+    };
+    const delta = deltas[key];
+    if (!delta) return;
+
+    e.preventDefault();
+    moveSelectedPart(delta);
+  });
+}
+
+initMovablePartKeyboard();
+
 const DEF_LABELS = {
   '_01_Lu_Dou':      { zh: '枓',  sub: '櫨枓'   },
   '_04_Jiao_Hu_Dou': { zh: '枓',  sub: '交互枓' },
@@ -1379,6 +1453,11 @@ function initHoverSystem() {
       restoreMats(name);
       hoverName = null;
       tooltip.style.display = 'none';
+    });
+
+    tr.addEventListener('click', e => {
+      e.stopPropagation();
+      selectMovablePart(name);
     });
   });
 }
