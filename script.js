@@ -51,6 +51,16 @@ const FEN_PER_MAJOR_UNIT = 30;
 const FEN_DISTANCE_SCALE = 1.5;
 let assembledModelLocalBottomY = null;
 
+function createMaterial(color, transparency = '0') {
+  const appearance = document.createElement('appearance');
+  const material = document.createElement('material');
+  material.setAttribute('diffuseColor', color);
+  material.setAttribute('emissiveColor', color);
+  material.setAttribute('transparency', transparency);
+  appearance.appendChild(material);
+  return appearance;
+}
+
 function normalizeDimensionFeatureValue(value) {
   const parsed = Number.parseInt(value, 10);
   if (Number.isNaN(parsed)) return dimensionFeatureValue;
@@ -109,8 +119,24 @@ function getDimensionStepSize() {
   return 2 * FEN_DISTANCE_SCALE * getDimensionMeasurementScale();
 }
 
+function getAbsoluteDimensionFenSize() {
+  return (2 * FEN_DISTANCE_SCALE) / FEN_PER_MAJOR_UNIT;
+}
+
 function getDimensionAxisLength() {
   return 12 * FEN_DISTANCE_SCALE * getDimensionMeasurementScale();
+}
+
+function getYAxisNodeFenValues(count = 16) {
+  const values = [0, 12];
+  let nextDelta = 15;
+
+  while (values.length < count) {
+    values.push(values[values.length - 1] + nextDelta);
+    nextDelta = nextDelta === 15 ? 6 : 15;
+  }
+
+  return values.slice(0, count);
 }
 
 function isMeasurementFeature(feature) {
@@ -157,10 +183,10 @@ function clearDimensionFeatures() {
   });
 
   clearSectionVisibility();
-  setGroundProjectionSelected(false);
-  setGroundProjectionHovered(false);
-  setGroundProjectionCopySelected(false);
-  setGroundProjectionCopyHovered(false);
+  gp.setSelected(false);
+  gp.setHovered(false);
+  gpCopy.setSelected(false);
+  gpCopy.setHovered(false);
   setActiveDimensionFeature(null);
 }
 
@@ -168,8 +194,8 @@ function activateDimensionFeature(feature) {
   if (feature === 'unit-grid') toggleUnitGrid();
   if (feature === 'axis-markers') toggleAxisMarkers();
   if (feature === 'axis-layer-planes') toggleAxisLayerPlanes();
-  if (feature === 'ground-projection') toggleGroundProjection();
-  if (feature === 'ground-projection-copy') toggleGroundProjectionCopy();
+  if (feature === 'ground-projection') gp.toggle();
+  if (feature === 'ground-projection-copy') gpCopy.toggle();
   setActiveDimensionFeature(feature);
 }
 
@@ -178,19 +204,6 @@ function refreshActiveDimensionFeature() {
   if (!feature) return;
   clearDimensionFeatures();
   activateDimensionFeature(feature);
-}
-
-function getLuDouBottomY() {
-  const wrapper = document.getElementById('model-wrapper');
-  const luDou = document.querySelector('[DEF="_01_Lu_Dou_TRANSFORM"]');
-  const wrapperTranslation = wrapper ? parseVec3(wrapper.getAttribute('translation')) : [0, -10, 0];
-  const wrapperScale = wrapper ? parseVec3(wrapper.getAttribute('scale')) : [BASE_MODEL_SCALE * getCaiScaleFactor()];
-  const luDouTranslation = luDou ? parseVec3(luDou.getAttribute('translation')) : [0, -0.442880, 0];
-  const wrapperY = Number.isFinite(wrapperTranslation[1]) ? wrapperTranslation[1] : -10;
-  const scaleY = Number.isFinite(wrapperScale[1]) ? wrapperScale[1] : (BASE_MODEL_SCALE * getCaiScaleFactor());
-  const luDouY = Number.isFinite(luDouTranslation[1]) ? luDouTranslation[1] : -0.442880;
-
-  return wrapperY + scaleY * luDouY;
 }
 
 (function initFeatureLights() {
@@ -361,16 +374,6 @@ function toggleUnitGrid() {
   transform.id = 'unit-cube-grid';
   transform.setAttribute('translation', `${DIMENSION_CENTER_X} ${DIMENSION_BASE_Y} ${DIMENSION_CENTER_Z}`);
 
-  function createMaterial(color, transparency = '0') {
-    const appearance = document.createElement('appearance');
-    const material = document.createElement('material');
-    material.setAttribute('diffuseColor', color);
-    material.setAttribute('emissiveColor', color);
-    material.setAttribute('transparency', transparency);
-    appearance.appendChild(material);
-    return appearance;
-  }
-
   function toCoord(index, centered = false) {
     const value = index * fenSize;
     return centered ? value - half : value;
@@ -488,16 +491,6 @@ function buildAxisMarkers(id, includeYPlanes = false) {
   group.id = id;
   group.setAttribute('translation', `${DIMENSION_CENTER_X} ${DIMENSION_BASE_Y} ${DIMENSION_CENTER_Z}`);
 
-  function createMaterial(color, transparency = '0') {
-    const appearance = document.createElement('appearance');
-    const material = document.createElement('material');
-    material.setAttribute('diffuseColor', color);
-    material.setAttribute('emissiveColor', color);
-    material.setAttribute('transparency', transparency);
-    appearance.appendChild(material);
-    return appearance;
-  }
-
   function addCylinder(parent, translation, rotation, height, color) {
     const transform = document.createElement('transform');
     const shape = document.createElement('shape');
@@ -528,6 +521,26 @@ function buildAxisMarkers(id, includeYPlanes = false) {
 
     shape.appendChild(createMaterial(color));
     shape.appendChild(sphere);
+    transform.appendChild(shape);
+    parent.appendChild(transform);
+  }
+
+  function addAxisLabel(parent, textValue, translation, color, rotation = '1 0 0 -1.5708') {
+    const transform = document.createElement('transform');
+    const shape = document.createElement('shape');
+    const text = document.createElement('text');
+    const fontStyle = document.createElement('fontStyle');
+
+    transform.setAttribute('translation', translation);
+    transform.setAttribute('rotation', rotation);
+    text.setAttribute('string', `"${textValue}"`);
+    fontStyle.setAttribute('size', '0.42');
+    fontStyle.setAttribute('family', '"Times New Roman"');
+    fontStyle.setAttribute('justify', '"MIDDLE" "MIDDLE"');
+
+    text.appendChild(fontStyle);
+    shape.appendChild(createMaterial(color));
+    shape.appendChild(text);
     transform.appendChild(shape);
     parent.appendChild(transform);
   }
@@ -590,7 +603,10 @@ function buildAxisMarkers(id, includeYPlanes = false) {
 
   const displayCount = getDimensionDisplayCount();
   const step = getDimensionStepSize();
-  const length = getDimensionAxisLength();
+  const fenSize = getAbsoluteDimensionFenSize();
+  const yNodeFenValues = getYAxisNodeFenValues(16);
+  const yNodeValues = yNodeFenValues.map(value => value * fenSize);
+  const length = Math.max(getDimensionAxisLength(), yNodeValues[yNodeValues.length - 1] || 0);
   const half = length / 2;
   const xzHalf = (displayCount - 1) * step / 2;
   const xzLength = xzHalf * 2;
@@ -607,6 +623,8 @@ function buildAxisMarkers(id, includeYPlanes = false) {
   for (let value = -xzHalf; value <= xzHalf; value += step) {
     addSphere(group, `${value} 0 0`, red);
     addSphere(group, `0 0 ${value}`, blue);
+    addAxisLabel(group, Math.round(Math.abs(value / fenSize)), `${value} 0 ${-xzHalf - 0.72}`, red);
+    addAxisLabel(group, Math.round(Math.abs(value / fenSize)), `${-xzHalf - 0.72} 0 ${value}`, blue);
     if (includeYPlanes) {
       addLayerPlane(group, 'x', value, planeSize, planeHeight, red);
       addLayerPlane(group, 'z', value, planeSize, planeHeight, blue);
@@ -622,10 +640,11 @@ function buildAxisMarkers(id, includeYPlanes = false) {
     addSphere(group, `0 0 ${value}`, blue, '0.055', true);
   }
 
-  for (let value = 0; value <= length; value += step) {
+  yNodeValues.forEach((value, index) => {
     addSphere(group, `0 ${value} 0`, green);
+    addAxisLabel(group, yNodeFenValues[index], `${0.55} ${value} ${0.55}`, green, '0 1 0 0');
     if (includeYPlanes) addLayerPlane(group, 'y', value, planeSize, planeHeight, green);
-  }
+  });
 
   scene.appendChild(group);
   if (window.x3dom) x3dom.reload();
@@ -653,174 +672,146 @@ function toggleAxisLayerPlanes() {
   buildAxisMarkers('xyz-axis-layer-planes', true);
 }
 
-let groundProjectionY = -16.02;
-let groundProjectionSelected = false;
-let groundProjectionHovered = false;
+function createGroundProjection({
+  id, planeMaterialId, labelId,
+  pickFnName, hoverFnName, unhoverFnName,
+  onUpdateY, onRemove, onBuildExtra, onToggleOn,
+}) {
+  let y = -16.02;
+  let selected = false;
+  let hovered = false;
+  let peer = null;
 
-function formatGroundProjectionY() {
-  return groundProjectionY.toFixed(2).replace(/\.?0+$/, '');
-}
-
-function updateGroundProjectionY() {
-  const projection = document.getElementById('ground-projection');
-  if (!projection) return;
-
-  projection.setAttribute('translation', `${DIMENSION_CENTER_X} ${groundProjectionY} ${DIMENSION_CENTER_Z}`);
-
-  const label = document.getElementById('ground-projection-y-label-text');
-  if (label) label.setAttribute('string', `"y=${formatGroundProjectionY()}"`);
-}
-
-function setGroundProjectionSelected(selected) {
-  groundProjectionSelected = selected;
-  if (selected && typeof setGroundProjectionCopySelected === 'function') {
-    setGroundProjectionCopySelected(false);
+  function formatY() {
+    return y.toFixed(2).replace(/\.?0+$/, '');
   }
-  updateGroundProjectionMaterial();
-}
 
-function setGroundProjectionHovered(hovered) {
-  groundProjectionHovered = hovered;
-  updateGroundProjectionMaterial();
-}
+  function updateMaterial() {
+    const mat = document.getElementById(planeMaterialId);
+    if (!mat) return;
+    mat.setAttribute('diffuseColor',  hovered ? '0.42 0.42 0.42' : '0.2 0.2 0.2');
+    mat.setAttribute('emissiveColor', hovered ? '0.16 0.16 0.16' : '0.2 0.2 0.2');
+    mat.setAttribute('transparency',  hovered ? '0.62'           : '0.76');
+  }
 
-function updateGroundProjectionMaterial() {
-  const planeMaterial = document.getElementById('ground-projection-plane-material');
-  if (planeMaterial) {
-    let diffuse = '0.2 0.2 0.2';
-    let emissive = '0.2 0.2 0.2';
-    let transparency = '0.76';
+  function updateY() {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.setAttribute('translation', `${DIMENSION_CENTER_X} ${y} ${DIMENSION_CENTER_Z}`);
+    const label = document.getElementById(labelId);
+    if (label) label.setAttribute('string', `"y=${formatY()}"`);
+    if (onUpdateY) onUpdateY();
+  }
 
-    if (groundProjectionHovered) {
-      diffuse = '0.42 0.42 0.42';
-      emissive = '0.16 0.16 0.16';
-      transparency = '0.62';
+  function setSelected(value) {
+    selected = value;
+    if (value && peer) peer.setSelected(false);
+    updateMaterial();
+  }
+
+  function setHovered(value) {
+    hovered = value;
+    updateMaterial();
+  }
+
+  window[pickFnName] = function (e) {
+    if (e) e.stopPropagation();
+    const now = Date.now();
+    if (window[pickFnName].lastPickAt && now - window[pickFnName].lastPickAt < 250) return;
+    window[pickFnName].lastPickAt = now;
+    setSelected(!selected);
+  };
+
+  window[hoverFnName]   = e => { if (e) e.stopPropagation(); setHovered(true); };
+  window[unhoverFnName] = e => { if (e) e.stopPropagation(); setHovered(false); };
+
+  const x3dEl = document.getElementById('x3d');
+  if (x3dEl) {
+    x3dEl.addEventListener('wheel', e => {
+      if (!selected || !document.getElementById(id)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      y += e.deltaY < 0 ? 0.25 : -0.25;
+      updateY();
+    }, { capture: true, passive: false });
+  }
+
+  function toggle() {
+    const existing = document.getElementById(id);
+    if (existing) {
+      existing.remove();
+      if (onRemove) onRemove();
+      setSelected(false);
+      setHovered(false);
+      if (window.x3dom) x3dom.reload();
+      return;
     }
 
-    planeMaterial.setAttribute('diffuseColor', diffuse);
-    planeMaterial.setAttribute('emissiveColor', emissive);
-    planeMaterial.setAttribute('transparency', transparency);
+    const scene = document.querySelector('scene');
+    if (!scene) return;
+
+    const step = getDimensionStepSize();
+    const displayCount = getDimensionDisplayCount();
+    const half = (displayCount - 1) * step / 2;
+    const size = Math.max(half * 2, step);
+
+    const group = document.createElement('transform');
+    group.id = id;
+    group.setAttribute('translation', `${DIMENSION_CENTER_X} ${y} ${DIMENSION_CENTER_Z}`);
+
+    addGroundProjectionSurface(group, size, {
+      planeMaterialId,
+      pickFunction: pickFnName,
+      hoverFunction: hoverFnName,
+      unhoverFunction: unhoverFnName,
+    });
+
+    if (onBuildExtra) onBuildExtra(group, size, half);
+
+    addGroundRuler(group, half, step, displayCount, `y=${formatY()}`, labelId);
+
+    scene.appendChild(group);
+    setSelected(false);
+    setHovered(false);
+    if (onToggleOn) onToggleOn();
+    if (window.x3dom) x3dom.reload();
   }
+
+  return { toggle, setSelected, setHovered, getY: () => y, setPeer(p) { peer = p; } };
 }
 
-window.pickGroundProjection = function (e) {
-  if (e) e.stopPropagation();
-  const now = Date.now();
-  if (window.pickGroundProjection.lastPickAt && now - window.pickGroundProjection.lastPickAt < 250) return;
-  window.pickGroundProjection.lastPickAt = now;
-  setGroundProjectionSelected(!groundProjectionSelected);
-};
+const gp = createGroundProjection({
+  id: 'ground-projection',
+  planeMaterialId: 'ground-projection-plane-material',
+  labelId: 'ground-projection-y-label-text',
+  pickFnName: 'pickGroundProjection',
+  hoverFnName: 'hoverGroundProjection',
+  unhoverFnName: 'unhoverGroundProjection',
+});
 
-window.hoverGroundProjection = function (e) {
-  if (e) e.stopPropagation();
-  setGroundProjectionHovered(true);
-};
+function addGroundLabel(group, textValue, translation, id = '') {
+  const transform = document.createElement('transform');
+  const shape = document.createElement('shape');
+  const text = document.createElement('text');
+  const fontStyle = document.createElement('fontStyle');
 
-window.unhoverGroundProjection = function (e) {
-  if (e) e.stopPropagation();
-  setGroundProjectionHovered(false);
-};
+  transform.setAttribute('translation', translation);
+  transform.setAttribute('rotation', '1 0 0 -1.5708');
+  if (id) text.id = id;
+  text.setAttribute('string', `"${textValue}"`);
+  fontStyle.setAttribute('size', '0.45');
+  fontStyle.setAttribute('family', '"Times New Roman"');
+  fontStyle.setAttribute('justify', '"MIDDLE" "MIDDLE"');
 
-(function initGroundProjectionWheel() {
-  const x3dEl = document.getElementById('x3d');
-  if (!x3dEl) return;
+  text.appendChild(fontStyle);
+  shape.appendChild(createMaterial('0 0 0'));
+  shape.appendChild(text);
+  transform.appendChild(shape);
+  group.appendChild(transform);
+}
 
-  x3dEl.addEventListener('wheel', e => {
-    if (!groundProjectionSelected || !document.getElementById('ground-projection')) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-
-    groundProjectionY += e.deltaY < 0 ? 0.25 : -0.25;
-    updateGroundProjectionY();
-  }, { capture: true, passive: false });
-})();
-
-function toggleGroundProjection() {
-  const existing = document.getElementById('ground-projection');
-  if (existing) {
-    existing.remove();
-    setGroundProjectionSelected(false);
-    setGroundProjectionHovered(false);
-    if (window.x3dom) x3dom.reload();
-    return;
-  }
-
-  const scene = document.querySelector('scene');
-  if (!scene) return;
-
-  const step = getDimensionStepSize();
-  const displayCount = getDimensionDisplayCount();
-  const half = (displayCount - 1) * step / 2;
-  const size = Math.max(half * 2, step);
-  const group = document.createElement('transform');
-  group.id = 'ground-projection';
-  group.setAttribute('translation', `${DIMENSION_CENTER_X} ${groundProjectionY} ${DIMENSION_CENTER_Z}`);
-  function createMaterial(color, transparency = '0') {
-    const appearance = document.createElement('appearance');
-    const material = document.createElement('material');
-    material.setAttribute('diffuseColor', color);
-    material.setAttribute('emissiveColor', color);
-    material.setAttribute('transparency', transparency);
-    appearance.appendChild(material);
-    return appearance;
-  }
-
-  function addGroundLabel(textValue, translation, id = '') {
-    const transform = document.createElement('transform');
-    const shape = document.createElement('shape');
-    const text = document.createElement('text');
-    const fontStyle = document.createElement('fontStyle');
-
-    transform.setAttribute('translation', translation);
-    transform.setAttribute('rotation', '1 0 0 -1.5708');
-    if (id) text.id = id;
-    text.setAttribute('string', `"${textValue}"`);
-    fontStyle.setAttribute('size', '0.45');
-    fontStyle.setAttribute('family', '"Times New Roman"');
-    fontStyle.setAttribute('justify', '"MIDDLE" "MIDDLE"');
-
-    text.appendChild(fontStyle);
-    shape.appendChild(createMaterial('0 0 0'));
-    shape.appendChild(text);
-    transform.appendChild(shape);
-    group.appendChild(transform);
-  }
-
-  const planeTransform = document.createElement('transform');
-  const planeShape = document.createElement('shape');
-  const plane = document.createElement('box');
-  const planeAppearance = createMaterial('0.2 0.2 0.2', '0.76');
-  const planeMaterial = planeAppearance.querySelector('material');
-  planeMaterial.id = 'ground-projection-plane-material';
-
-  planeTransform.setAttribute('translation', '0 -0.02 0');
-  plane.setAttribute('size', `${size} 0.04 ${size}`);
-  planeShape.appendChild(planeAppearance);
-  planeShape.appendChild(plane);
-  planeTransform.appendChild(planeShape);
-  group.appendChild(planeTransform);
-
-  const pickTransform = document.createElement('transform');
-  const pickShape = document.createElement('shape');
-  const pickAppearance = document.createElement('appearance');
-  const pickMaterial = document.createElement('material');
-  const pickBox = document.createElement('box');
-  pickTransform.setAttribute('translation', '0 0.04 0');
-  pickShape.setAttribute('onclick', 'window.pickGroundProjection(event)');
-  pickShape.setAttribute('onmousedown', 'window.pickGroundProjection(event)');
-  pickShape.setAttribute('onmouseover', 'window.hoverGroundProjection(event)');
-  pickShape.setAttribute('onmouseout', 'window.unhoverGroundProjection(event)');
-  pickMaterial.setAttribute('diffuseColor', '1 1 1');
-  pickMaterial.setAttribute('transparency', '0.98');
-  pickAppearance.appendChild(pickMaterial);
-  pickBox.setAttribute('size', `${size} 0.12 ${size}`);
-  pickShape.appendChild(pickAppearance);
-  pickShape.appendChild(pickBox);
-  pickTransform.appendChild(pickShape);
-  group.appendChild(pickTransform);
-
+function addGroundRuler(group, half, step, displayCount, yLabel, yLabelId) {
   const linePoints = [
     `${-half} 0 ${-half}`, `${half} 0 ${-half}`,
     `${half} 0 ${-half}`, `${half} 0 ${half}`,
@@ -844,8 +835,8 @@ function toggleGroundProjection() {
     linePoints.push(`${-half} 0 ${value}`, `${-half - 0.45} 0 ${value}`);
     lineSegments.push(`${zTickStart} ${zTickStart + 1} -1`);
 
-    addGroundLabel(value, `${value} 0 ${-half - 0.95}`);
-    addGroundLabel(value, `${-half - 0.95} 0 ${value}`);
+    addGroundLabel(group, value, `${value} 0 ${-half - 0.95}`);
+    addGroundLabel(group, value, `${-half - 0.95} 0 ${value}`);
   }
 
   const fineLinePoints = [];
@@ -888,15 +879,41 @@ function toggleGroundProjection() {
   lineShape.appendChild(lineSet);
   group.appendChild(lineShape);
 
-  addGroundLabel(`y=${formatGroundProjectionY()}`, `${half + 1.35} 0 ${half + 0.75}`, 'ground-projection-y-label-text');
-
-  scene.appendChild(group);
-  setGroundProjectionSelected(false);
-  setGroundProjectionHovered(false);
-  if (window.x3dom) x3dom.reload();
+  addGroundLabel(group, yLabel, `${half + 1.35} 0 ${half + 0.75}`, yLabelId);
 }
 
-function addSectionVoidToGroup(group, size, half, createMaterial) {
+function addGroundProjectionSurface(group, size, { planeMaterialId, pickFunction, hoverFunction, unhoverFunction }) {
+  const planeTransform = document.createElement('transform');
+  const planeShape = document.createElement('shape');
+  const plane = document.createElement('box');
+  const planeAppearance = createMaterial('0.2 0.2 0.2', '0.76');
+  const planeMaterial = planeAppearance.querySelector('material');
+  planeMaterial.id = planeMaterialId;
+
+  planeTransform.setAttribute('translation', '0 -0.02 0');
+  plane.setAttribute('size', `${size} 0.04 ${size}`);
+  planeShape.appendChild(planeAppearance);
+  planeShape.appendChild(plane);
+  planeTransform.appendChild(planeShape);
+  group.appendChild(planeTransform);
+
+  const pickTransform = document.createElement('transform');
+  const pickShape = document.createElement('shape');
+  const pickBox = document.createElement('box');
+  pickTransform.setAttribute('translation', '0 0.04 0');
+  pickShape.setAttribute('onclick', `window.${pickFunction}(event)`);
+  pickShape.setAttribute('onmousedown', `window.${pickFunction}(event)`);
+  pickShape.setAttribute('onmouseover', `window.${hoverFunction}(event)`);
+  pickShape.setAttribute('onmouseout', `window.${unhoverFunction}(event)`);
+  pickBox.setAttribute('size', `${size} 0.12 ${size}`);
+  pickShape.appendChild(createMaterial('1 1 1', '0.98'));
+  pickShape.appendChild(pickBox);
+  pickTransform.appendChild(pickShape);
+  group.appendChild(pickTransform);
+}
+
+
+function addSectionVoidToGroup(group, size, half) {
   const points = [
     `${-half} 0 ${-half}`, `${half} 0 ${-half}`, `${half} 0 ${half}`, `${-half} 0 ${half}`,
   ];
@@ -914,252 +931,21 @@ function addSectionVoidToGroup(group, size, half, createMaterial) {
   group.appendChild(edgeShape);
 }
 
-let groundProjectionCopyY = -16.02;
-let groundProjectionCopySelected = false;
-let groundProjectionCopyHovered = false;
+const gpCopy = createGroundProjection({
+  id: 'ground-projection-copy',
+  planeMaterialId: 'ground-projection-copy-plane-material',
+  labelId: 'ground-projection-copy-y-label-text',
+  pickFnName: 'pickGroundProjectionCopy',
+  hoverFnName: 'hoverGroundProjectionCopy',
+  unhoverFnName: 'unhoverGroundProjectionCopy',
+  onRemove: clearSectionVisibility,
+  onBuildExtra: addSectionVoidToGroup,
+  onUpdateY: applyGroundProjectionCopySection,
+  onToggleOn: applyGroundProjectionCopySection,
+});
+gp.setPeer(gpCopy);
+gpCopy.setPeer(gp);
 
-function formatGroundProjectionCopyY() {
-  return groundProjectionCopyY.toFixed(2).replace(/\.?0+$/, '');
-}
-
-function updateGroundProjectionCopyY() {
-  const projection = document.getElementById('ground-projection-copy');
-  if (!projection) return;
-
-  projection.setAttribute('translation', `${DIMENSION_CENTER_X} ${groundProjectionCopyY} ${DIMENSION_CENTER_Z}`);
-
-  const label = document.getElementById('ground-projection-copy-y-label-text');
-  if (label) label.setAttribute('string', `"y=${formatGroundProjectionCopyY()}"`);
-  applyGroundProjectionCopySection();
-}
-
-function setGroundProjectionCopySelected(selected) {
-  groundProjectionCopySelected = selected;
-  if (selected) setGroundProjectionSelected(false);
-  updateGroundProjectionCopyMaterial();
-}
-
-function setGroundProjectionCopyHovered(hovered) {
-  groundProjectionCopyHovered = hovered;
-  updateGroundProjectionCopyMaterial();
-}
-
-function updateGroundProjectionCopyMaterial() {
-  const planeMaterial = document.getElementById('ground-projection-copy-plane-material');
-  if (!planeMaterial) return;
-
-  let diffuse = '0.2 0.2 0.2';
-  let emissive = '0.2 0.2 0.2';
-  let transparency = '0.76';
-
-  if (groundProjectionCopyHovered) {
-    diffuse = '0.42 0.42 0.42';
-    emissive = '0.16 0.16 0.16';
-    transparency = '0.62';
-  }
-
-  planeMaterial.setAttribute('diffuseColor', diffuse);
-  planeMaterial.setAttribute('emissiveColor', emissive);
-  planeMaterial.setAttribute('transparency', transparency);
-}
-
-window.pickGroundProjectionCopy = function (e) {
-  if (e) e.stopPropagation();
-  const now = Date.now();
-  if (window.pickGroundProjectionCopy.lastPickAt && now - window.pickGroundProjectionCopy.lastPickAt < 250) return;
-  window.pickGroundProjectionCopy.lastPickAt = now;
-  setGroundProjectionCopySelected(!groundProjectionCopySelected);
-};
-
-window.hoverGroundProjectionCopy = function (e) {
-  if (e) e.stopPropagation();
-  setGroundProjectionCopyHovered(true);
-};
-
-window.unhoverGroundProjectionCopy = function (e) {
-  if (e) e.stopPropagation();
-  setGroundProjectionCopyHovered(false);
-};
-
-(function initGroundProjectionCopyWheel() {
-  const x3dEl = document.getElementById('x3d');
-  if (!x3dEl) return;
-
-  x3dEl.addEventListener('wheel', e => {
-    if (!groundProjectionCopySelected || !document.getElementById('ground-projection-copy')) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-
-    groundProjectionCopyY += e.deltaY < 0 ? 0.25 : -0.25;
-    updateGroundProjectionCopyY();
-  }, { capture: true, passive: false });
-})();
-
-function toggleGroundProjectionCopy() {
-  const existing = document.getElementById('ground-projection-copy');
-  if (existing) {
-    existing.remove();
-    clearSectionVisibility();
-    setGroundProjectionCopySelected(false);
-    setGroundProjectionCopyHovered(false);
-    if (window.x3dom) x3dom.reload();
-    return;
-  }
-
-  const scene = document.querySelector('scene');
-  if (!scene) return;
-
-  const step = getDimensionStepSize();
-  const displayCount = getDimensionDisplayCount();
-  const half = (displayCount - 1) * step / 2;
-  const size = Math.max(half * 2, step);
-  const group = document.createElement('transform');
-  group.id = 'ground-projection-copy';
-  group.setAttribute('translation', `${DIMENSION_CENTER_X} ${groundProjectionCopyY} ${DIMENSION_CENTER_Z}`);
-
-  function createMaterial(color, transparency = '0') {
-    const appearance = document.createElement('appearance');
-    const material = document.createElement('material');
-    material.setAttribute('diffuseColor', color);
-    material.setAttribute('emissiveColor', color);
-    material.setAttribute('transparency', transparency);
-    appearance.appendChild(material);
-    return appearance;
-  }
-
-  function addGroundLabel(textValue, translation, id = '') {
-    const transform = document.createElement('transform');
-    const shape = document.createElement('shape');
-    const text = document.createElement('text');
-    const fontStyle = document.createElement('fontStyle');
-
-    transform.setAttribute('translation', translation);
-    transform.setAttribute('rotation', '1 0 0 -1.5708');
-    if (id) text.id = id;
-    text.setAttribute('string', `"${textValue}"`);
-    fontStyle.setAttribute('size', '0.45');
-    fontStyle.setAttribute('family', '"Times New Roman"');
-    fontStyle.setAttribute('justify', '"MIDDLE" "MIDDLE"');
-
-    text.appendChild(fontStyle);
-    shape.appendChild(createMaterial('0 0 0'));
-    shape.appendChild(text);
-    transform.appendChild(shape);
-    group.appendChild(transform);
-  }
-
-  const planeTransform = document.createElement('transform');
-  const planeShape = document.createElement('shape');
-  const plane = document.createElement('box');
-  const planeAppearance = createMaterial('0.2 0.2 0.2', '0.76');
-  const planeMaterial = planeAppearance.querySelector('material');
-  planeMaterial.id = 'ground-projection-copy-plane-material';
-
-  planeTransform.setAttribute('translation', '0 -0.02 0');
-  plane.setAttribute('size', `${size} 0.04 ${size}`);
-  planeShape.appendChild(planeAppearance);
-  planeShape.appendChild(plane);
-  planeTransform.appendChild(planeShape);
-  group.appendChild(planeTransform);
-
-  const pickTransform = document.createElement('transform');
-  const pickShape = document.createElement('shape');
-  const pickAppearance = document.createElement('appearance');
-  const pickMaterial = document.createElement('material');
-  const pickBox = document.createElement('box');
-  pickTransform.setAttribute('translation', '0 0.04 0');
-  pickShape.setAttribute('onclick', 'window.pickGroundProjectionCopy(event)');
-  pickShape.setAttribute('onmousedown', 'window.pickGroundProjectionCopy(event)');
-  pickShape.setAttribute('onmouseover', 'window.hoverGroundProjectionCopy(event)');
-  pickShape.setAttribute('onmouseout', 'window.unhoverGroundProjectionCopy(event)');
-  pickMaterial.setAttribute('diffuseColor', '1 1 1');
-  pickMaterial.setAttribute('transparency', '0.98');
-  pickAppearance.appendChild(pickMaterial);
-  pickBox.setAttribute('size', `${size} 0.12 ${size}`);
-  pickShape.appendChild(pickAppearance);
-  pickShape.appendChild(pickBox);
-  pickTransform.appendChild(pickShape);
-  group.appendChild(pickTransform);
-
-  addSectionVoidToGroup(group, size, half, createMaterial);
-
-  const linePoints = [
-    `${-half} 0 ${-half}`, `${half} 0 ${-half}`,
-    `${half} 0 ${-half}`, `${half} 0 ${half}`,
-    `${half} 0 ${half}`, `${-half} 0 ${half}`,
-    `${-half} 0 ${half}`, `${-half} 0 ${-half}`,
-    `${-half} 0 0`, `${half} 0 0`,
-    `0 0 ${-half}`, `0 0 ${half}`,
-  ];
-  const lineSegments = [];
-
-  for (let i = 0; i < linePoints.length; i += 2) {
-    lineSegments.push(`${i} ${i + 1} -1`);
-  }
-
-  for (let value = -half; value <= half; value += step) {
-    const xTickStart = linePoints.length;
-    linePoints.push(`${value} 0 ${-half}`, `${value} 0 ${-half - 0.45}`);
-    lineSegments.push(`${xTickStart} ${xTickStart + 1} -1`);
-
-    const zTickStart = linePoints.length;
-    linePoints.push(`${-half} 0 ${value}`, `${-half - 0.45} 0 ${value}`);
-    lineSegments.push(`${zTickStart} ${zTickStart + 1} -1`);
-
-    addGroundLabel(value, `${value} 0 ${-half - 0.95}`);
-    addGroundLabel(value, `${-half - 0.95} 0 ${value}`);
-  }
-
-  const fineLinePoints = [];
-  const fineLineSegments = [];
-  const fineDivisions = (displayCount - 1) * FEN_PER_MAJOR_UNIT;
-  const fineStep = step / FEN_PER_MAJOR_UNIT;
-
-  for (let i = 0; i <= fineDivisions; i++) {
-    if (i % FEN_PER_MAJOR_UNIT === 0) continue;
-    const value = -half + i * fineStep;
-
-    const xTickStart = fineLinePoints.length;
-    fineLinePoints.push(`${value} 0 ${-half}`, `${value} 0 ${-half - 0.22}`);
-    fineLineSegments.push(`${xTickStart} ${xTickStart + 1} -1`);
-
-    const zTickStart = fineLinePoints.length;
-    fineLinePoints.push(`${-half} 0 ${value}`, `${-half - 0.22} 0 ${value}`);
-    fineLineSegments.push(`${zTickStart} ${zTickStart + 1} -1`);
-  }
-
-  const fineLineShape = document.createElement('shape');
-  const fineLineSet = document.createElement('indexedLineSet');
-  const fineLineCoords = document.createElement('coordinate');
-  fineLineShape.setAttribute('data-fen-grid-lines', 'true');
-  fineLineShape.setAttribute('render', String(fineFenGridVisible));
-  fineLineSet.setAttribute('coordIndex', fineLineSegments.join(' '));
-  fineLineCoords.setAttribute('point', fineLinePoints.join(' '));
-  fineLineSet.appendChild(fineLineCoords);
-  fineLineShape.appendChild(createMaterial('0.34 0.34 0.34'));
-  fineLineShape.appendChild(fineLineSet);
-  group.appendChild(fineLineShape);
-
-  const lineShape = document.createElement('shape');
-  const lineSet = document.createElement('indexedLineSet');
-  const lineCoords = document.createElement('coordinate');
-  lineSet.setAttribute('coordIndex', lineSegments.join(' '));
-  lineCoords.setAttribute('point', linePoints.join(' '));
-  lineSet.appendChild(lineCoords);
-  lineShape.appendChild(createMaterial('0 0 0'));
-  lineShape.appendChild(lineSet);
-  group.appendChild(lineShape);
-
-  addGroundLabel(`y=${formatGroundProjectionCopyY()}`, `${half + 1.35} 0 ${half + 0.75}`, 'ground-projection-copy-y-label-text');
-
-  scene.appendChild(group);
-  setGroundProjectionCopySelected(false);
-  setGroundProjectionCopyHovered(false);
-  applyGroundProjectionCopySection();
-  if (window.x3dom) x3dom.reload();
-}
 
 function parseVec3(value) {
   return String(value || '0 0 0').trim().split(/\s+/).map(Number);
@@ -1216,7 +1002,7 @@ function applyGroundProjectionCopySection() {
 
   const wrapperScale = parseVec3(modelWrapper.getAttribute('scale') || `${BASE_MODEL_SCALE} ${BASE_MODEL_SCALE} ${BASE_MODEL_SCALE}`);
   const wrapperTranslation = parseVec3(modelWrapper.getAttribute('translation') || BASE_MODEL_TRANSLATION.join(' '));
-  const localClipY = (groundProjectionCopyY - wrapperTranslation[1]) / wrapperScale[1];
+  const localClipY = (gpCopy.getY() - wrapperTranslation[1]) / wrapperScale[1];
   clipPlane.setAttribute('plane', `0 1 0 ${-localClipY}`);
   if (window.x3dom) x3dom.reload();
 }
@@ -1638,8 +1424,8 @@ function initFenSubgridToggle() {
   function render() {
     const isAbsolute = fenMeasurementMode === 'absolute';
     toggle.textContent = isAbsolute ? '分' : '份';
-    toggle.classList.toggle('is-active', isAbsolute);
-    toggle.setAttribute('aria-pressed', String(isAbsolute));
+    toggle.classList.remove('is-active');
+    toggle.setAttribute('aria-pressed', 'false');
   }
 
   render();
