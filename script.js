@@ -45,6 +45,10 @@ const BASE_CAI_GRADE = 8;
 const BASE_MODEL_SCALE = 10;
 const BASE_MODEL_TRANSLATION = [0, -10, 0];
 const DIMENSION_BASE_Y = -14.428800;
+const DIMENSION_CENTER_X = -0.134631;
+const DIMENSION_CENTER_Z = 0.011413;
+const FEN_PER_MAJOR_UNIT = 30;
+const FEN_DISTANCE_SCALE = 1.5;
 let assembledModelLocalBottomY = null;
 
 function normalizeDimensionFeatureValue(value) {
@@ -84,7 +88,7 @@ function getDimensionDisplayCount() {
 }
 
 function getFenGridMajorCellSize() {
-  const baseMajorCellSize = 2.4;
+  const baseMajorCellSize = 2.4 * FEN_DISTANCE_SCALE;
   return fenMeasurementMode === 'relative'
     ? baseMajorCellSize * getCaiScaleFactor()
     : baseMajorCellSize;
@@ -102,11 +106,11 @@ function getDimensionMeasurementScale() {
 }
 
 function getDimensionStepSize() {
-  return 2 * getDimensionMeasurementScale();
+  return 2 * FEN_DISTANCE_SCALE * getDimensionMeasurementScale();
 }
 
 function getDimensionAxisLength() {
-  return 12 * getDimensionMeasurementScale();
+  return 12 * FEN_DISTANCE_SCALE * getDimensionMeasurementScale();
 }
 
 function isMeasurementFeature(feature) {
@@ -345,7 +349,7 @@ function toggleUnitGrid() {
   const scene = document.querySelector('scene');
   if (!scene) return;
 
-  const footCaiFen = 21;
+  const footCaiFen = FEN_PER_MAJOR_UNIT;
   const majorCells = getDimensionDisplayCount();
   const majorCellSize = getFenGridMajorCellSize();
   const fenSize = majorCellSize / footCaiFen;
@@ -355,7 +359,7 @@ function toggleUnitGrid() {
 
   const transform = document.createElement('transform');
   transform.id = 'unit-cube-grid';
-  transform.setAttribute('translation', `-0.134631 ${DIMENSION_BASE_Y} 0.011413`);
+  transform.setAttribute('translation', `${DIMENSION_CENTER_X} ${DIMENSION_BASE_Y} ${DIMENSION_CENTER_Z}`);
 
   function createMaterial(color, transparency = '0') {
     const appearance = document.createElement('appearance');
@@ -482,7 +486,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
 
   const group = document.createElement('transform');
   group.id = id;
-  group.setAttribute('translation', `0 ${DIMENSION_BASE_Y} 0`);
+  group.setAttribute('translation', `${DIMENSION_CENTER_X} ${DIMENSION_BASE_Y} ${DIMENSION_CENTER_Z}`);
 
   function createMaterial(color, transparency = '0') {
     const appearance = document.createElement('appearance');
@@ -528,7 +532,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
     parent.appendChild(transform);
   }
 
-  function addLayerPlane(parent, y, size, color) {
+  function addLayerPlane(parent, axis, value, size, height, color) {
     const transform = document.createElement('transform');
     const planeShape = document.createElement('shape');
     const plane = document.createElement('box');
@@ -536,18 +540,44 @@ function buildAxisMarkers(id, includeYPlanes = false) {
     const lineSet = document.createElement('indexedLineSet');
     const coordinate = document.createElement('coordinate');
     const halfSize = size / 2;
+    const halfHeight = height / 2;
 
-    transform.setAttribute('translation', `0 ${y} 0`);
-    plane.setAttribute('size', `${size} 0.018 ${size}`);
+    if (axis === 'y') {
+      transform.setAttribute('translation', `0 ${value} 0`);
+      plane.setAttribute('size', `${size} 0.018 ${size}`);
+      coordinate.setAttribute('point', [
+        `${-halfSize} 0.02 ${-halfSize}`,
+        `${halfSize} 0.02 ${-halfSize}`,
+        `${halfSize} 0.02 ${halfSize}`,
+        `${-halfSize} 0.02 ${halfSize}`,
+      ].join(' '));
+    }
+
+    if (axis === 'x') {
+      transform.setAttribute('translation', `${value} ${halfHeight} 0`);
+      plane.setAttribute('size', `0.018 ${height} ${size}`);
+      coordinate.setAttribute('point', [
+        `0.02 ${-halfHeight} ${-halfSize}`,
+        `0.02 ${halfHeight} ${-halfSize}`,
+        `0.02 ${halfHeight} ${halfSize}`,
+        `0.02 ${-halfHeight} ${halfSize}`,
+      ].join(' '));
+    }
+
+    if (axis === 'z') {
+      transform.setAttribute('translation', `0 ${halfHeight} ${value}`);
+      plane.setAttribute('size', `${size} ${height} 0.018`);
+      coordinate.setAttribute('point', [
+        `${-halfSize} ${-halfHeight} 0.02`,
+        `${halfSize} ${-halfHeight} 0.02`,
+        `${halfSize} ${halfHeight} 0.02`,
+        `${-halfSize} ${halfHeight} 0.02`,
+      ].join(' '));
+    }
+
     planeShape.appendChild(createMaterial(color, '0.9'));
     planeShape.appendChild(plane);
 
-    coordinate.setAttribute('point', [
-      `${-halfSize} 0.02 ${-halfSize}`,
-      `${halfSize} 0.02 ${-halfSize}`,
-      `${halfSize} 0.02 ${halfSize}`,
-      `${-halfSize} 0.02 ${halfSize}`,
-    ].join(' '));
     lineSet.setAttribute('coordIndex', '0 1 2 3 0 -1');
     edgeShape.appendChild(createMaterial(color, '0'));
     lineSet.appendChild(coordinate);
@@ -565,6 +595,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
   const xzHalf = (displayCount - 1) * step / 2;
   const xzLength = xzHalf * 2;
   const planeSize = Math.max(xzLength, step);
+  const planeHeight = length;
   const red = '0.9 0.05 0.05';
   const green = '0.05 0.7 0.15';
   const blue = '0.05 0.25 0.95';
@@ -576,12 +607,16 @@ function buildAxisMarkers(id, includeYPlanes = false) {
   for (let value = -xzHalf; value <= xzHalf; value += step) {
     addSphere(group, `${value} 0 0`, red);
     addSphere(group, `0 0 ${value}`, blue);
+    if (includeYPlanes) {
+      addLayerPlane(group, 'x', value, planeSize, planeHeight, red);
+      addLayerPlane(group, 'z', value, planeSize, planeHeight, blue);
+    }
   }
 
-  const fineDivisions = (displayCount - 1) * 21;
-  const fineStep = step / 21;
+  const fineDivisions = (displayCount - 1) * FEN_PER_MAJOR_UNIT;
+  const fineStep = step / FEN_PER_MAJOR_UNIT;
   for (let i = 0; i <= fineDivisions; i++) {
-    if (i % 21 === 0) continue;
+    if (i % FEN_PER_MAJOR_UNIT === 0) continue;
     const value = -xzHalf + i * fineStep;
     addSphere(group, `${value} 0 0`, red, '0.055', true);
     addSphere(group, `0 0 ${value}`, blue, '0.055', true);
@@ -589,7 +624,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
 
   for (let value = 0; value <= length; value += step) {
     addSphere(group, `0 ${value} 0`, green);
-    if (includeYPlanes) addLayerPlane(group, value, planeSize, green);
+    if (includeYPlanes) addLayerPlane(group, 'y', value, planeSize, planeHeight, green);
   }
 
   scene.appendChild(group);
@@ -630,7 +665,7 @@ function updateGroundProjectionY() {
   const projection = document.getElementById('ground-projection');
   if (!projection) return;
 
-  projection.setAttribute('translation', `0 ${groundProjectionY} 0`);
+  projection.setAttribute('translation', `${DIMENSION_CENTER_X} ${groundProjectionY} ${DIMENSION_CENTER_Z}`);
 
   const label = document.getElementById('ground-projection-y-label-text');
   if (label) label.setAttribute('string', `"y=${formatGroundProjectionY()}"`);
@@ -721,7 +756,7 @@ function toggleGroundProjection() {
   const size = Math.max(half * 2, step);
   const group = document.createElement('transform');
   group.id = 'ground-projection';
-  group.setAttribute('translation', `0 ${groundProjectionY} 0`);
+  group.setAttribute('translation', `${DIMENSION_CENTER_X} ${groundProjectionY} ${DIMENSION_CENTER_Z}`);
   function createMaterial(color, transparency = '0') {
     const appearance = document.createElement('appearance');
     const material = document.createElement('material');
@@ -813,6 +848,36 @@ function toggleGroundProjection() {
     addGroundLabel(value, `${-half - 0.95} 0 ${value}`);
   }
 
+  const fineLinePoints = [];
+  const fineLineSegments = [];
+  const fineDivisions = (displayCount - 1) * FEN_PER_MAJOR_UNIT;
+  const fineStep = step / FEN_PER_MAJOR_UNIT;
+
+  for (let i = 0; i <= fineDivisions; i++) {
+    if (i % FEN_PER_MAJOR_UNIT === 0) continue;
+    const value = -half + i * fineStep;
+
+    const xTickStart = fineLinePoints.length;
+    fineLinePoints.push(`${value} 0 ${-half}`, `${value} 0 ${-half - 0.22}`);
+    fineLineSegments.push(`${xTickStart} ${xTickStart + 1} -1`);
+
+    const zTickStart = fineLinePoints.length;
+    fineLinePoints.push(`${-half} 0 ${value}`, `${-half - 0.22} 0 ${value}`);
+    fineLineSegments.push(`${zTickStart} ${zTickStart + 1} -1`);
+  }
+
+  const fineLineShape = document.createElement('shape');
+  const fineLineSet = document.createElement('indexedLineSet');
+  const fineLineCoords = document.createElement('coordinate');
+  fineLineShape.setAttribute('data-fen-grid-lines', 'true');
+  fineLineShape.setAttribute('render', String(fineFenGridVisible));
+  fineLineSet.setAttribute('coordIndex', fineLineSegments.join(' '));
+  fineLineCoords.setAttribute('point', fineLinePoints.join(' '));
+  fineLineSet.appendChild(fineLineCoords);
+  fineLineShape.appendChild(createMaterial('0.34 0.34 0.34'));
+  fineLineShape.appendChild(fineLineSet);
+  group.appendChild(fineLineShape);
+
   const lineShape = document.createElement('shape');
   const lineSet = document.createElement('indexedLineSet');
   const lineCoords = document.createElement('coordinate');
@@ -861,7 +926,7 @@ function updateGroundProjectionCopyY() {
   const projection = document.getElementById('ground-projection-copy');
   if (!projection) return;
 
-  projection.setAttribute('translation', `0 ${groundProjectionCopyY} 0`);
+  projection.setAttribute('translation', `${DIMENSION_CENTER_X} ${groundProjectionCopyY} ${DIMENSION_CENTER_Z}`);
 
   const label = document.getElementById('ground-projection-copy-y-label-text');
   if (label) label.setAttribute('string', `"y=${formatGroundProjectionCopyY()}"`);
@@ -952,7 +1017,7 @@ function toggleGroundProjectionCopy() {
   const size = Math.max(half * 2, step);
   const group = document.createElement('transform');
   group.id = 'ground-projection-copy';
-  group.setAttribute('translation', `0 ${groundProjectionCopyY} 0`);
+  group.setAttribute('translation', `${DIMENSION_CENTER_X} ${groundProjectionCopyY} ${DIMENSION_CENTER_Z}`);
 
   function createMaterial(color, transparency = '0') {
     const appearance = document.createElement('appearance');
@@ -1046,6 +1111,36 @@ function toggleGroundProjectionCopy() {
     addGroundLabel(value, `${value} 0 ${-half - 0.95}`);
     addGroundLabel(value, `${-half - 0.95} 0 ${value}`);
   }
+
+  const fineLinePoints = [];
+  const fineLineSegments = [];
+  const fineDivisions = (displayCount - 1) * FEN_PER_MAJOR_UNIT;
+  const fineStep = step / FEN_PER_MAJOR_UNIT;
+
+  for (let i = 0; i <= fineDivisions; i++) {
+    if (i % FEN_PER_MAJOR_UNIT === 0) continue;
+    const value = -half + i * fineStep;
+
+    const xTickStart = fineLinePoints.length;
+    fineLinePoints.push(`${value} 0 ${-half}`, `${value} 0 ${-half - 0.22}`);
+    fineLineSegments.push(`${xTickStart} ${xTickStart + 1} -1`);
+
+    const zTickStart = fineLinePoints.length;
+    fineLinePoints.push(`${-half} 0 ${value}`, `${-half - 0.22} 0 ${value}`);
+    fineLineSegments.push(`${zTickStart} ${zTickStart + 1} -1`);
+  }
+
+  const fineLineShape = document.createElement('shape');
+  const fineLineSet = document.createElement('indexedLineSet');
+  const fineLineCoords = document.createElement('coordinate');
+  fineLineShape.setAttribute('data-fen-grid-lines', 'true');
+  fineLineShape.setAttribute('render', String(fineFenGridVisible));
+  fineLineSet.setAttribute('coordIndex', fineLineSegments.join(' '));
+  fineLineCoords.setAttribute('point', fineLinePoints.join(' '));
+  fineLineSet.appendChild(fineLineCoords);
+  fineLineShape.appendChild(createMaterial('0.34 0.34 0.34'));
+  fineLineShape.appendChild(fineLineSet);
+  group.appendChild(fineLineShape);
 
   const lineShape = document.createElement('shape');
   const lineSet = document.createElement('indexedLineSet');
