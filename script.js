@@ -620,11 +620,14 @@ function buildAxisMarkers(id, includeYPlanes = false) {
   addCylinder(group, `0 ${half} 0`, null, length, green);
   addCylinder(group, '0 0 0', '1 0 0 1.5708', Math.max(xzLength, step), blue);
 
+  const xzLabelSide = includeYPlanes ? 1 : -1;
+  const xzLabelOffset = xzLabelSide * (xzHalf + 0.72);
+
   for (let value = -xzHalf; value <= xzHalf; value += step) {
     addSphere(group, `${value} 0 0`, red);
     addSphere(group, `0 0 ${value}`, blue);
-    addAxisLabel(group, Math.round(Math.abs(value / fenSize)), `${value} 0 ${-xzHalf - 0.72}`, red);
-    addAxisLabel(group, Math.round(Math.abs(value / fenSize)), `${-xzHalf - 0.72} 0 ${value}`, blue);
+    addAxisLabel(group, Math.round(Math.abs(value / fenSize)), `${value} 0 ${xzLabelOffset}`, red);
+    addAxisLabel(group, Math.round(Math.abs(value / fenSize)), `${xzLabelOffset} 0 ${value}`, blue);
     if (includeYPlanes) {
       addLayerPlane(group, 'x', value, planeSize, planeHeight, red);
       addLayerPlane(group, 'z', value, planeSize, planeHeight, blue);
@@ -1253,6 +1256,17 @@ function initHighlightSystem() {
   Object.values(TYPE_DEFS).flat().forEach(name => {
     const tr = document.querySelector('[DEF="' + name + '_TRANSFORM"]');
     if (!tr) return;
+
+    tr.querySelectorAll('Group[USE]').forEach(useNode => {
+      const defName = useNode.getAttribute('USE');
+      const defGroup = document.querySelector(`Group[DEF="${defName}"]`);
+      if (!defGroup) return;
+      const clone = defGroup.cloneNode(true);
+      clone.removeAttribute('DEF');
+      clone.querySelectorAll('[DEF]').forEach(el => el.removeAttribute('DEF'));
+      useNode.parentNode.replaceChild(clone, useNode);
+    });
+
     const owned = [];
     tr.querySelectorAll('Appearance').forEach(app => {
       let mat = app.querySelector('Material');
@@ -1714,40 +1728,158 @@ function initModelVisibilityToggle() {
 
 initModelVisibilityToggle();
 
+const MODEL_CONFIGS = {
+  original: {
+    label: 'Palace',
+    url: '05-5-1.x3d',
+    scale: '10 10 10',
+    translation: BASE_MODEL_TRANSLATION.join(' '),
+    enableOriginalTools: true,
+    viewpoint: {
+      position: '0 -11.642880 50',
+      orientation: '0 0 0 0',
+      fieldOfView: '0.6',
+    },
+  },
+  palace: {
+    label: '05-5-1',
+    url: 'Palace1.x3d',
+    scale: '1 1 1',
+    translation: '0 0 0',
+    enableOriginalTools: false,
+    viewpoint: {
+      position: '0 0 46',
+      orientation: '0 0 0 0',
+      fieldOfView: '0.7',
+    },
+  },
+};
+
+let activeModelKey = 'original';
+let modelLoadRequestId = 0;
+
+function getMainViewpoint() {
+  return document.querySelector('scene > viewpoint');
+}
+
+function applyViewpointConfig(config) {
+  const viewpoint = getMainViewpoint();
+  if (!viewpoint || !config.viewpoint) return;
+
+  Object.entries(config.viewpoint).forEach(([name, value]) => {
+    viewpoint.setAttribute(name, value);
+  });
+}
+
+function resetOriginalModelState() {
+  Object.values(_animRaf).forEach(handle => {
+    if (handle) cancelAnimationFrame(handle);
+  });
+  Object.keys(_animRaf).forEach(key => delete _animRaf[key]);
+  Object.keys(_animCur).forEach(key => delete _animCur[key]);
+  Object.keys(matMap).forEach(key => delete matMap[key]);
+  hlReady = false;
+  selectedMovableName = null;
+  selectedType = null;
+  hoverName = null;
+  assembledModelLocalBottomY = null;
+  tooltip.style.display = 'none';
+  clearDimensionFeatures();
+  setBoundingBoxesVisible(false);
+  layerNavReady = false;
+  assembledLayerCount = 1;
+  updateLayerNavButtons();
+}
+
+function setModelSwitchLoading(isLoading) {
+  const button = document.getElementById('model-switch-toggle');
+  if (!button) return;
+  button.disabled = isLoading;
+  button.textContent = isLoading ? 'Loading' : MODEL_CONFIGS[activeModelKey].label;
+}
+
+function initOriginalModelTools() {
+  initHighlightSystem();
+  initHoverSystem();
+  Object.keys(TYPE_DEFS).forEach(type => window.scatterType(type));
+  assembledLayerCount = 1;
+  layerNavReady = true;
+  updateLayerNavButtons();
+  if (boundingBoxesVisible) renderBoundingBoxes();
+  applyModelGeometryVisibility(modelGeometryVisible);
+}
+
+function loadModel(modelKey) {
+  const config = MODEL_CONFIGS[modelKey];
+  if (!config || !targetScene) return;
+
+  const requestId = ++modelLoadRequestId;
+  activeModelKey = modelKey;
+  resetOriginalModelState();
+  setModelSwitchLoading(true);
+  applyViewpointConfig(config);
+
+  const currentWrapper = document.getElementById('model-wrapper');
+  if (currentWrapper) currentWrapper.remove();
+  if (window.x3dom) x3dom.reload();
+
+  fetch(config.url)
+    .then(r => {
+      if (!r.ok) throw new Error(`${config.url} returned ${r.status}`);
+      return r.text();
+    })
+    .then(text => {
+      if (requestId !== modelLoadRequestId) return;
+
+      const parser = new DOMParser();
+      const x3dDoc = parser.parseFromString(text, 'application/xml');
+      const srcScene = x3dDoc.querySelector('Scene');
+      if (!srcScene) throw new Error(`${config.url} has no Scene element`);
+
+      const wrapper = document.createElement('transform');
+      wrapper.id = 'model-wrapper';
+      wrapper.setAttribute('scale', config.scale);
+      wrapper.setAttribute('translation', config.translation);
+
+      Array.from(srcScene.children).forEach(child => {
+        const skip = ['NavigationInfo', 'Background'].includes(child.tagName);
+        if (!skip) wrapper.appendChild(document.importNode(child, true));
+      });
+
+      targetScene.appendChild(wrapper);
+      if (config.enableOriginalTools) applyCaiGradeScale();
+      else if (window.x3dom) x3dom.reload();
+
+      setTimeout(() => {
+        if (requestId !== modelLoadRequestId) return;
+        if (config.enableOriginalTools) initOriginalModelTools();
+        setModelSwitchLoading(false);
+      }, 300);
+    })
+    .catch(err => {
+      if (requestId !== modelLoadRequestId) return;
+      console.error('X3D load failed:', err);
+      setModelSwitchLoading(false);
+    });
+}
+
+function initModelSwitchToggle() {
+  const button = document.getElementById('model-switch-toggle');
+  if (!button) return;
+
+  button.textContent = MODEL_CONFIGS[activeModelKey].label;
+  button.addEventListener('click', () => {
+    loadModel(activeModelKey === 'original' ? 'palace' : 'original');
+  });
+}
+
+initModelSwitchToggle();
+
 // Fetch X3D, inject into DOM so querySelector works, then init highlight
 const targetScene = document.querySelector('scene');
-fetch('05-5-1.x3d')
-  .then(r => r.text())
-  .then(text => {
-    const parser = new DOMParser();
-    const x3dDoc = parser.parseFromString(text, 'application/xml');
-    const srcScene = x3dDoc.querySelector('Scene');
+loadModel(activeModelKey);
 
-    // wrapper keeps original scale/position
-    const wrapper = document.createElement('transform');
-    wrapper.id = 'model-wrapper';
-    wrapper.setAttribute('scale', '10 10 10');
-    wrapper.setAttribute('translation', BASE_MODEL_TRANSLATION.join(' '));
-
-    Array.from(srcScene.children).forEach(child => {
-      const skip = ['NavigationInfo','Background'].includes(child.tagName);
-      if (!skip) wrapper.appendChild(document.importNode(child, true));
-    });
-    targetScene.appendChild(wrapper);
-    applyCaiGradeScale();
-    setTimeout(() => {
-      initHighlightSystem();
-      initHoverSystem();
       // 初始：所有構件散落
-      Object.keys(TYPE_DEFS).forEach(type => window.scatterType(type));
-      assembledLayerCount = 1;
-      layerNavReady = true;
-      updateLayerNavButtons();
-      if (boundingBoxesVisible) renderBoundingBoxes();
-      applyModelGeometryVisibility(modelGeometryVisible);
-    }, 300);
-  })
-  .catch(err => console.error('X3D load failed:', err));
 
 
 /* ─────────────────────────────────────────
