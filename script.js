@@ -47,6 +47,7 @@ const BASE_MODEL_TRANSLATION = [0, -10, 0];
 const DIMENSION_BASE_Y = -14.428800;
 const DIMENSION_CENTER_X = -0.134631;
 const DIMENSION_CENTER_Z = 0.011413;
+const DIMENSION_ANCHOR_DEF = '_01_Lu_Dou';
 const FEN_PER_MAJOR_UNIT = 30;
 const FEN_DISTANCE_SCALE = 1.5;
 let assembledModelLocalBottomY = null;
@@ -94,14 +95,11 @@ function applyCaiGradeScale() {
 }
 
 function getDimensionDisplayCount() {
-  return dimensionFeatureValue * 2 - 1;
+  return dimensionFeatureValue * 2;
 }
 
 function getFenGridMajorCellSize() {
-  const baseMajorCellSize = 2.4 * FEN_DISTANCE_SCALE;
-  return fenMeasurementMode === 'relative'
-    ? baseMajorCellSize * getCaiScaleFactor()
-    : baseMajorCellSize;
+  return getDimensionStepSize();
 }
 
 function getFenGridMajorLineRadius() {
@@ -369,10 +367,11 @@ function toggleUnitGrid() {
   const fenDivisions = majorCells * footCaiFen;
   const fullSize = majorCells * majorCellSize;
   const half = fullSize / 2;
+  const [anchorX, anchorY, anchorZ] = getDimensionAnchorPosition();
 
   const transform = document.createElement('transform');
   transform.id = 'unit-cube-grid';
-  transform.setAttribute('translation', `${DIMENSION_CENTER_X} ${DIMENSION_BASE_Y} ${DIMENSION_CENTER_Z}`);
+  transform.setAttribute('translation', `${anchorX} ${anchorY} ${anchorZ}`);
 
   function toCoord(index, centered = false) {
     const value = index * fenSize;
@@ -489,7 +488,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
 
   const group = document.createElement('transform');
   group.id = id;
-  group.setAttribute('translation', `${DIMENSION_CENTER_X} ${DIMENSION_BASE_Y} ${DIMENSION_CENTER_Z}`);
+  group.setAttribute('translation', getDimensionAnchorPosition().join(' '));
 
   function addCylinder(parent, translation, rotation, height, color) {
     const transform = document.createElement('transform');
@@ -608,7 +607,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
   const yNodeValues = yNodeFenValues.map(value => value * fenSize);
   const length = Math.max(getDimensionAxisLength(), yNodeValues[yNodeValues.length - 1] || 0);
   const half = length / 2;
-  const xzHalf = (displayCount - 1) * step / 2;
+  const xzHalf = displayCount * step / 2;
   const xzLength = xzHalf * 2;
   const planeSize = Math.max(xzLength, step);
   const planeHeight = length;
@@ -634,7 +633,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
     }
   }
 
-  const fineDivisions = (displayCount - 1) * FEN_PER_MAJOR_UNIT;
+  const fineDivisions = displayCount * FEN_PER_MAJOR_UNIT;
   const fineStep = step / FEN_PER_MAJOR_UNIT;
   for (let i = 0; i <= fineDivisions; i++) {
     if (i % FEN_PER_MAJOR_UNIT === 0) continue;
@@ -700,7 +699,8 @@ function createGroundProjection({
   function updateY() {
     const el = document.getElementById(id);
     if (!el) return;
-    el.setAttribute('translation', `${DIMENSION_CENTER_X} ${y} ${DIMENSION_CENTER_Z}`);
+    const [anchorX, , anchorZ] = getDimensionAnchorPosition();
+    el.setAttribute('translation', `${anchorX} ${y} ${anchorZ}`);
     const label = document.getElementById(labelId);
     if (label) label.setAttribute('string', `"y=${formatY()}"`);
     if (onUpdateY) onUpdateY();
@@ -756,12 +756,13 @@ function createGroundProjection({
 
     const step = getDimensionStepSize();
     const displayCount = getDimensionDisplayCount();
-    const half = (displayCount - 1) * step / 2;
+    const half = displayCount * step / 2;
     const size = Math.max(half * 2, step);
+    const [anchorX, , anchorZ] = getDimensionAnchorPosition();
 
     const group = document.createElement('transform');
     group.id = id;
-    group.setAttribute('translation', `${DIMENSION_CENTER_X} ${y} ${DIMENSION_CENTER_Z}`);
+    group.setAttribute('translation', `${anchorX} ${y} ${anchorZ}`);
 
     addGroundProjectionSurface(group, size, {
       planeMaterialId,
@@ -814,6 +815,11 @@ function addGroundLabel(group, textValue, translation, id = '') {
   group.appendChild(transform);
 }
 
+function formatSignedFenLabel(value) {
+  const fenValue = Math.round(value / getAbsoluteDimensionFenSize());
+  return fenValue === 0 ? '0' : String(fenValue);
+}
+
 function addGroundRuler(group, half, step, displayCount, yLabel, yLabelId) {
   const linePoints = [
     `${-half} 0 ${-half}`, `${half} 0 ${-half}`,
@@ -838,13 +844,13 @@ function addGroundRuler(group, half, step, displayCount, yLabel, yLabelId) {
     linePoints.push(`${-half} 0 ${value}`, `${-half - 0.45} 0 ${value}`);
     lineSegments.push(`${zTickStart} ${zTickStart + 1} -1`);
 
-    addGroundLabel(group, value, `${value} 0 ${-half - 0.95}`);
-    addGroundLabel(group, value, `${-half - 0.95} 0 ${value}`);
+    addGroundLabel(group, formatSignedFenLabel(value), `${value} 0 ${-half - 0.95}`);
+    addGroundLabel(group, formatSignedFenLabel(value), `${-half - 0.95} 0 ${value}`);
   }
 
   const fineLinePoints = [];
   const fineLineSegments = [];
-  const fineDivisions = (displayCount - 1) * FEN_PER_MAJOR_UNIT;
+  const fineDivisions = displayCount * FEN_PER_MAJOR_UNIT;
   const fineStep = step / FEN_PER_MAJOR_UNIT;
 
   for (let i = 0; i <= fineDivisions; i++) {
@@ -952,6 +958,99 @@ gpCopy.setPeer(gp);
 
 function parseVec3(value) {
   return String(value || '0 0 0').trim().split(/\s+/).map(Number);
+}
+
+function parseRotation(value) {
+  const rotation = String(value || '0 0 1 0').trim().split(/\s+/).map(Number);
+  return rotation.length >= 4 && rotation.every(Number.isFinite)
+    ? rotation.slice(0, 4)
+    : [0, 0, 1, 0];
+}
+
+function rotateVec3(point, rotation) {
+  const [axisX, axisY, axisZ, angle] = rotation;
+  const axisLength = Math.hypot(axisX, axisY, axisZ);
+  if (!axisLength || !angle) return point.slice();
+
+  const x = axisX / axisLength;
+  const y = axisY / axisLength;
+  const z = axisZ / axisLength;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const dot = point[0] * x + point[1] * y + point[2] * z;
+
+  return [
+    point[0] * cos + (y * point[2] - z * point[1]) * sin + x * dot * (1 - cos),
+    point[1] * cos + (z * point[0] - x * point[2]) * sin + y * dot * (1 - cos),
+    point[2] * cos + (x * point[1] - y * point[0]) * sin + z * dot * (1 - cos),
+  ];
+}
+
+function applyTransformToPoint(point, transform) {
+  const scale = parseVec3(transform.getAttribute('scale') || '1 1 1');
+  const rotation = parseRotation(transform.getAttribute('rotation'));
+  const translation = parseVec3(transform.getAttribute('translation'));
+  const scaled = point.map((value, axis) => value * (scale[axis] ?? 1));
+  const rotated = rotateVec3(scaled, rotation);
+
+  return rotated.map((value, axis) => value + (translation[axis] ?? 0));
+}
+
+function getCoordinateBounds(group) {
+  const coord = group?.querySelector('Coordinate[point], coordinate[point]');
+  if (!coord) return null;
+
+  const values = coord.getAttribute('point').trim().split(/\s+/).map(Number);
+  if (values.length < 3) return null;
+
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+
+  for (let i = 0; i + 2 < values.length; i += 3) {
+    const point = [values[i], values[i + 1], values[i + 2]];
+    if (point.some(Number.isNaN)) continue;
+
+    for (let axis = 0; axis < 3; axis++) {
+      min[axis] = Math.min(min[axis], point[axis]);
+      max[axis] = Math.max(max[axis], point[axis]);
+    }
+  }
+
+  if (min.some(v => !Number.isFinite(v)) || max.some(v => !Number.isFinite(v))) return null;
+  return { min, max };
+}
+
+function getDimensionAnchorPosition() {
+  const transform = document.querySelector(`[DEF="${DIMENSION_ANCHOR_DEF}_TRANSFORM"]`);
+  const wrapper = document.getElementById('model-wrapper');
+  const group = transform && getGeometryGroupForPart(transform);
+  const bounds = group && getCoordinateBounds(group);
+
+  if (!transform || !wrapper || !bounds) {
+    return [DIMENSION_CENTER_X, DIMENSION_BASE_Y, DIMENSION_CENTER_Z];
+  }
+
+  const [minX, minY, minZ] = bounds.min;
+  const [maxX, maxY, maxZ] = bounds.max;
+  const corners = [
+    [minX, minY, minZ],
+    [maxX, minY, minZ],
+    [minX, maxY, minZ],
+    [maxX, maxY, minZ],
+    [minX, minY, maxZ],
+    [maxX, minY, maxZ],
+    [minX, maxY, maxZ],
+    [maxX, maxY, maxZ],
+  ].map(point => applyTransformToPoint(point, transform));
+  const minSceneLocalY = Math.min(...corners.map(point => point[1]));
+  const bottomCorners = corners.filter(point => Math.abs(point[1] - minSceneLocalY) < 1e-6);
+  const bottomCenterLocal = bottomCorners.reduce((sum, point) => [
+    sum[0] + point[0] / bottomCorners.length,
+    sum[1] + point[1] / bottomCorners.length,
+    sum[2] + point[2] / bottomCorners.length,
+  ], [0, 0, 0]);
+
+  return applyTransformToPoint(bottomCenterLocal, wrapper);
 }
 
 function getComponentWorldPosition(defName) {
@@ -1543,30 +1642,11 @@ function getGeometryGroupForPart(transform) {
 
 function getLocalBoundingBox(transform) {
   const group = getGeometryGroupForPart(transform);
-  if (!group) return null;
-
-  const coord = group.querySelector('Coordinate[point]');
-  if (!coord) return null;
-
-  const values = coord.getAttribute('point').trim().split(/\s+/).map(Number);
-  if (values.length < 3) return null;
-
-  const min = [Infinity, Infinity, Infinity];
-  const max = [-Infinity, -Infinity, -Infinity];
-
-  for (let i = 0; i + 2 < values.length; i += 3) {
-    const point = [values[i], values[i + 1], values[i + 2]];
-    if (point.some(Number.isNaN)) continue;
-
-    for (let axis = 0; axis < 3; axis++) {
-      min[axis] = Math.min(min[axis], point[axis]);
-      max[axis] = Math.max(max[axis], point[axis]);
-    }
-  }
-
-  if (min.some(v => !Number.isFinite(v)) || max.some(v => !Number.isFinite(v))) return null;
+  const bounds = getCoordinateBounds(group);
+  if (!bounds) return null;
 
   const pad = 0.08;
+  const { min, max } = bounds;
   const size = min.map((v, i) => Math.max(max[i] - v + pad, 0.12));
   return {
     center: min.map((v, i) => ((v + max[i]) / 2).toFixed(6)).join(' '),
