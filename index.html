@@ -507,16 +507,6 @@
       <span class="feature-light" role="button" tabindex="0" data-feature="axis-layer-planes" title="XYZ 軸切層"></span>
       <span class="feature-light" role="button" tabindex="0" data-feature="ground-projection" title="地面投影"></span>
       <span class="feature-light" role="button" tabindex="0" data-feature="ground-projection-copy" title="剖面空區"></span>
-      <label class="feature-count-control" title="展示數量">
-        <input id="feature-count" type="number" min="1" max="8" step="1" value="3" aria-label="展示數量">
-        <span class="date-stepper" id="feature-count-stepper" role="spinbutton" tabindex="0" aria-label="展示數量" aria-valuemin="1" aria-valuemax="8" aria-valuenow="3">
-          <button class="date-step date-step-up" type="button" aria-label="增加展示數量">▲</button>
-          <span class="date-window" aria-hidden="true">
-            <span class="date-wheel">3</span>
-          </span>
-          <button class="date-step date-step-down" type="button" aria-label="減少展示數量">▼</button>
-        </span>
-      </label>
     </div>
     <button id="fen-grid-toggle" class="graph-toggle is-active" type="button" aria-pressed="true" title="細線">ON</button>
     <button id="fen-subgrid-toggle" class="graph-toggle" type="button" aria-pressed="false" title="衡量標準">份</button>
@@ -538,6 +528,7 @@
     </div>
   </div>
 
+  <script src="model-data.js"></script>
   <script src="script.js"></script>
   <script src="graph.js"></script>
 
