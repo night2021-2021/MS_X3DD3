@@ -88,6 +88,42 @@ function getDimensionStepSize() {
   return 2 * FEN_DISTANCE_SCALE * getDimensionMeasurementScale();
 }
 
+function getDimensionFenSize() {
+  return getDimensionStepSize() / FEN_PER_MAJOR_UNIT;
+}
+
+function getXMajorFenPositions() {
+  const totalFen = X_MAJOR_CELL_FEN_WIDTHS.reduce((sum, width) => sum + width, 0);
+  const positions = [-totalFen / 2];
+
+  X_MAJOR_CELL_FEN_WIDTHS.forEach(width => {
+    positions.push(positions[positions.length - 1] + width);
+  });
+
+  return positions;
+}
+
+function getXMajorPositions() {
+  const fenSize = getDimensionFenSize();
+  return getXMajorFenPositions().map(value => value * fenSize);
+}
+
+function getZMajorFenPositions() {
+  const totalFen = Z_MAJOR_CELL_FEN_WIDTHS.reduce((sum, width) => sum + width, 0);
+  const positions = [-totalFen / 2];
+
+  Z_MAJOR_CELL_FEN_WIDTHS.forEach(width => {
+    positions.push(positions[positions.length - 1] + width);
+  });
+
+  return positions;
+}
+
+function getZMajorPositions() {
+  const fenSize = getDimensionFenSize();
+  return getZMajorFenPositions().map(value => value * fenSize);
+}
+
 function getAbsoluteDimensionFenSize() {
   return (2 * FEN_DISTANCE_SCALE) / FEN_PER_MAJOR_UNIT;
 }
@@ -323,22 +359,48 @@ function toggleUnitGrid() {
   const majorCells = getDimensionDisplayCount();
   const majorCellSize = getFenGridMajorCellSize();
   const fenSize = majorCellSize / footCaiFen;
-  const fenDivisions = majorCells * footCaiFen;
-  const fullSize = majorCells * majorCellSize;
-  const half = fullSize / 2;
+  const yFenDivisions = majorCells * footCaiFen;
+  const xMajorFenPositions = getXMajorFenPositions();
+  const xMajorFenSet = new Set(xMajorFenPositions);
+  const xFenDivisions = xMajorFenPositions[xMajorFenPositions.length - 1] - xMajorFenPositions[0];
+  const zMajorFenPositions = getZMajorFenPositions();
+  const zMajorFenSet = new Set(zMajorFenPositions);
+  const zFenDivisions = zMajorFenPositions[zMajorFenPositions.length - 1] - zMajorFenPositions[0];
+  const yFullSize = majorCells * majorCellSize;
+  const yHalf = yFullSize / 2;
+  const xFullSize = xFenDivisions * fenSize;
+  const xHalf = xFullSize / 2;
+  const zFullSize = zFenDivisions * fenSize;
+  const zHalf = zFullSize / 2;
   const [anchorX, anchorY, anchorZ] = getDimensionAnchorPosition();
 
   const transform = document.createElement('transform');
   transform.id = 'unit-cube-grid';
   transform.setAttribute('translation', `${anchorX} ${anchorY} ${anchorZ}`);
 
-  function toCoord(index, centered = false) {
+  function toYCoord(index) {
     const value = index * fenSize;
-    return centered ? value - half : value;
+    return value;
+  }
+
+  function toXCoord(index) {
+    return index * fenSize - xHalf;
+  }
+
+  function toZCoord(index) {
+    return index * fenSize - zHalf;
   }
 
   function isMajorFen(index) {
     return index % footCaiFen === 0;
+  }
+
+  function isMajorXFen(index) {
+    return xMajorFenSet.has(index + xMajorFenPositions[0]);
+  }
+
+  function isMajorZFen(index) {
+    return zMajorFenSet.has(index + zMajorFenPositions[0]);
   }
 
   function addFineFenGrid() {
@@ -351,32 +413,32 @@ function toggleUnitGrid() {
       segments.push(`${start} ${start + 1} -1`);
     }
 
-    for (let y = 0; y <= fenDivisions; y++) {
-      for (let z = 0; z <= fenDivisions; z++) {
-        if (isMajorFen(y) && isMajorFen(z)) continue;
+    for (let y = 0; y <= yFenDivisions; y++) {
+      for (let z = 0; z <= zFenDivisions; z++) {
+        if (isMajorFen(y) && isMajorZFen(z)) continue;
         addLine(
-          `${-half} ${toCoord(y)} ${toCoord(z, true)}`,
-          `${half} ${toCoord(y)} ${toCoord(z, true)}`
+          `${-xHalf} ${toYCoord(y)} ${toZCoord(z)}`,
+          `${xHalf} ${toYCoord(y)} ${toZCoord(z)}`
         );
       }
     }
 
-    for (let x = 0; x <= fenDivisions; x++) {
-      for (let z = 0; z <= fenDivisions; z++) {
-        if (isMajorFen(x) && isMajorFen(z)) continue;
+    for (let x = 0; x <= xFenDivisions; x++) {
+      for (let z = 0; z <= zFenDivisions; z++) {
+        if (isMajorXFen(x) && isMajorZFen(z)) continue;
         addLine(
-          `${toCoord(x, true)} 0 ${toCoord(z, true)}`,
-          `${toCoord(x, true)} ${fullSize} ${toCoord(z, true)}`
+          `${toXCoord(x)} 0 ${toZCoord(z)}`,
+          `${toXCoord(x)} ${yFullSize} ${toZCoord(z)}`
         );
       }
     }
 
-    for (let x = 0; x <= fenDivisions; x++) {
-      for (let y = 0; y <= fenDivisions; y++) {
-        if (isMajorFen(x) && isMajorFen(y)) continue;
+    for (let x = 0; x <= xFenDivisions; x++) {
+      for (let y = 0; y <= yFenDivisions; y++) {
+        if (isMajorXFen(x) && isMajorFen(y)) continue;
         addLine(
-          `${toCoord(x, true)} ${toCoord(y)} ${-half}`,
-          `${toCoord(x, true)} ${toCoord(y)} ${half}`
+          `${toXCoord(x)} ${toYCoord(y)} ${-zHalf}`,
+          `${toXCoord(x)} ${toYCoord(y)} ${zHalf}`
         );
       }
     }
@@ -395,7 +457,7 @@ function toggleUnitGrid() {
     transform.appendChild(shape);
   }
 
-  function addMajorFenLine(translation, rotation) {
+  function addMajorFenLine(translation, rotation, length) {
     const lineTransform = document.createElement('transform');
     const shape = document.createElement('shape');
     const cylinder = document.createElement('cylinder');
@@ -403,7 +465,7 @@ function toggleUnitGrid() {
     lineTransform.setAttribute('translation', translation);
     if (rotation) lineTransform.setAttribute('rotation', rotation);
     cylinder.setAttribute('radius', String(getFenGridMajorLineRadius()));
-    cylinder.setAttribute('height', String(fullSize));
+    cylinder.setAttribute('height', String(length));
 
     shape.appendChild(createMaterial('0 0 0'));
     shape.appendChild(cylinder);
@@ -412,23 +474,23 @@ function toggleUnitGrid() {
   }
 
   function addMajorFenGrid() {
-    for (let y = 0; y <= fenDivisions; y += footCaiFen) {
-      for (let z = 0; z <= fenDivisions; z += footCaiFen) {
-        addMajorFenLine(`0 ${toCoord(y)} ${toCoord(z, true)}`, '0 0 1 1.5708');
-      }
+    for (let y = 0; y <= yFenDivisions; y += footCaiFen) {
+      getZMajorPositions().forEach(z => {
+        addMajorFenLine(`0 ${toYCoord(y)} ${z}`, '0 0 1 1.5708', xFullSize);
+      });
     }
 
-    for (let x = 0; x <= fenDivisions; x += footCaiFen) {
-      for (let z = 0; z <= fenDivisions; z += footCaiFen) {
-        addMajorFenLine(`${toCoord(x, true)} ${half} ${toCoord(z, true)}`, null);
-      }
-    }
+    getXMajorPositions().forEach(x => {
+      getZMajorPositions().forEach(z => {
+        addMajorFenLine(`${x} ${yHalf} ${z}`, null, yFullSize);
+      });
+    });
 
-    for (let x = 0; x <= fenDivisions; x += footCaiFen) {
-      for (let y = 0; y <= fenDivisions; y += footCaiFen) {
-        addMajorFenLine(`${toCoord(x, true)} ${toCoord(y)} 0`, '1 0 0 1.5708');
+    getXMajorPositions().forEach(x => {
+      for (let y = 0; y <= yFenDivisions; y += footCaiFen) {
+        addMajorFenLine(`${x} ${toYCoord(y)} 0`, '1 0 0 1.5708', zFullSize);
       }
-    }
+    });
   }
 
   addFineFenGrid();
@@ -503,46 +565,47 @@ function buildAxisMarkers(id, includeYPlanes = false) {
     parent.appendChild(transform);
   }
 
-  function addLayerPlane(parent, axis, value, size, height, color) {
+  function addLayerPlane(parent, axis, value, xSize, zSize, height, color) {
     const transform = document.createElement('transform');
     const planeShape = document.createElement('shape');
     const plane = document.createElement('box');
     const edgeShape = document.createElement('shape');
     const lineSet = document.createElement('indexedLineSet');
     const coordinate = document.createElement('coordinate');
-    const halfSize = size / 2;
+    const xHalf = xSize / 2;
+    const zHalf = zSize / 2;
     const halfHeight = height / 2;
 
     if (axis === 'y') {
       transform.setAttribute('translation', `0 ${value} 0`);
-      plane.setAttribute('size', `${size} 0.018 ${size}`);
+      plane.setAttribute('size', `${xSize} 0.018 ${zSize}`);
       coordinate.setAttribute('point', [
-        `${-halfSize} 0.02 ${-halfSize}`,
-        `${halfSize} 0.02 ${-halfSize}`,
-        `${halfSize} 0.02 ${halfSize}`,
-        `${-halfSize} 0.02 ${halfSize}`,
+        `${-xHalf} 0.02 ${-zHalf}`,
+        `${xHalf} 0.02 ${-zHalf}`,
+        `${xHalf} 0.02 ${zHalf}`,
+        `${-xHalf} 0.02 ${zHalf}`,
       ].join(' '));
     }
 
     if (axis === 'x') {
       transform.setAttribute('translation', `${value} ${halfHeight} 0`);
-      plane.setAttribute('size', `0.018 ${height} ${size}`);
+      plane.setAttribute('size', `0.018 ${height} ${zSize}`);
       coordinate.setAttribute('point', [
-        `0.02 ${-halfHeight} ${-halfSize}`,
-        `0.02 ${halfHeight} ${-halfSize}`,
-        `0.02 ${halfHeight} ${halfSize}`,
-        `0.02 ${-halfHeight} ${halfSize}`,
+        `0.02 ${-halfHeight} ${-zHalf}`,
+        `0.02 ${halfHeight} ${-zHalf}`,
+        `0.02 ${halfHeight} ${zHalf}`,
+        `0.02 ${-halfHeight} ${zHalf}`,
       ].join(' '));
     }
 
     if (axis === 'z') {
       transform.setAttribute('translation', `0 ${halfHeight} ${value}`);
-      plane.setAttribute('size', `${size} ${height} 0.018`);
+      plane.setAttribute('size', `${xSize} ${height} 0.018`);
       coordinate.setAttribute('point', [
-        `${-halfSize} ${-halfHeight} 0.02`,
-        `${halfSize} ${-halfHeight} 0.02`,
-        `${halfSize} ${halfHeight} 0.02`,
-        `${-halfSize} ${halfHeight} 0.02`,
+        `${-xHalf} ${-halfHeight} 0.02`,
+        `${xHalf} ${-halfHeight} 0.02`,
+        `${xHalf} ${halfHeight} 0.02`,
+        `${-xHalf} ${halfHeight} 0.02`,
       ].join(' '));
     }
 
@@ -559,51 +622,63 @@ function buildAxisMarkers(id, includeYPlanes = false) {
     parent.appendChild(transform);
   }
 
-  const displayCount = getDimensionDisplayCount();
   const step = getDimensionStepSize();
   const fenSize = getAbsoluteDimensionFenSize();
-  const yNodeFenValues = getYAxisNodeFenValues(16);
+  const yNodeFenValues = getYAxisNodeFenValues(16).filter(value => value <= 96);
   const yNodeValues = yNodeFenValues.map(value => value * fenSize);
-  const length = Math.max(getDimensionAxisLength(), yNodeValues[yNodeValues.length - 1] || 0);
+  const length = yNodeValues[yNodeValues.length - 1] || 0;
   const half = length / 2;
-  const xzHalf = displayCount * step / 2;
-  const xzLength = xzHalf * 2;
-  const planeSize = Math.max(xzLength, step);
+  const xMajorFenPositions = getXMajorFenPositions();
+  const xMajorFenSet = new Set(xMajorFenPositions);
+  const xMajorPositions = getXMajorPositions();
+  const xHalf = Math.max(...xMajorPositions.map(Math.abs));
+  const xLength = xHalf * 2;
+  const zMajorFenPositions = getZMajorFenPositions();
+  const zMajorFenSet = new Set(zMajorFenPositions);
+  const zMajorPositions = getZMajorPositions();
+  const zHalf = Math.max(...zMajorPositions.map(Math.abs));
+  const zLength = zHalf * 2;
   const planeHeight = length;
   const red = '0.9 0.05 0.05';
   const green = '0.05 0.7 0.15';
   const blue = '0.05 0.25 0.95';
 
-  addCylinder(group, '0 0 0', '0 0 1 1.5708', Math.max(xzLength, step), red);
+  addCylinder(group, '0 0 0', '0 0 1 1.5708', Math.max(xLength, step), red);
   addCylinder(group, `0 ${half} 0`, null, length, green);
-  addCylinder(group, '0 0 0', '1 0 0 1.5708', Math.max(xzLength, step), blue);
+  addCylinder(group, '0 0 0', '1 0 0 1.5708', Math.max(zLength, step), blue);
 
-  const xzLabelOffset = xzHalf + 0.72;
+  const xLabelOffset = zHalf + 0.72;
+  const zLabelOffset = xHalf + 0.72;
 
-  for (let value = -xzHalf; value <= xzHalf; value += step) {
+  xMajorPositions.forEach((value, index) => {
     addSphere(group, `${value} 0 0`, red);
-    addSphere(group, `0 0 ${value}`, blue);
-    addAxisLabel(group, Math.round(Math.abs(value / fenSize)), `${value} 0 ${xzLabelOffset}`, red);
-    addAxisLabel(group, Math.round(Math.abs(value / fenSize)), `${xzLabelOffset} 0 ${value}`, blue);
+    addAxisLabel(group, Math.abs(xMajorFenPositions[index]), `${value} 0 ${xLabelOffset}`, red);
     if (includeYPlanes) {
-      addLayerPlane(group, 'x', value, planeSize, planeHeight, red);
-      addLayerPlane(group, 'z', value, planeSize, planeHeight, blue);
+      addLayerPlane(group, 'x', value, xLength, zLength, planeHeight, red);
     }
+  });
+
+  zMajorPositions.forEach((value, index) => {
+    addSphere(group, `0 0 ${value}`, blue);
+    addAxisLabel(group, Math.abs(zMajorFenPositions[index]), `${zLabelOffset} 0 ${value}`, blue);
+    if (includeYPlanes) addLayerPlane(group, 'z', value, xLength, zLength, planeHeight, blue);
+  });
+
+  const measurementFenSize = getDimensionFenSize();
+  for (let fen = xMajorFenPositions[0]; fen <= xMajorFenPositions[xMajorFenPositions.length - 1]; fen++) {
+    if (xMajorFenSet.has(fen)) continue;
+    addSphere(group, `${fen * measurementFenSize} 0 0`, red, '0.055', true);
   }
 
-  const fineDivisions = displayCount * FEN_PER_MAJOR_UNIT;
-  const fineStep = step / FEN_PER_MAJOR_UNIT;
-  for (let i = 0; i <= fineDivisions; i++) {
-    if (i % FEN_PER_MAJOR_UNIT === 0) continue;
-    const value = -xzHalf + i * fineStep;
-    addSphere(group, `${value} 0 0`, red, '0.055', true);
-    addSphere(group, `0 0 ${value}`, blue, '0.055', true);
+  for (let fen = zMajorFenPositions[0]; fen <= zMajorFenPositions[zMajorFenPositions.length - 1]; fen++) {
+    if (zMajorFenSet.has(fen)) continue;
+    addSphere(group, `0 0 ${fen * measurementFenSize}`, blue, '0.055', true);
   }
 
   yNodeValues.forEach((value, index) => {
     addSphere(group, `0 ${value} 0`, green);
-    addAxisLabel(group, yNodeFenValues[index], `${xzHalf + 0.72} ${value} ${xzHalf + 0.72}`, green, '0 1 0 0');
-    if (includeYPlanes) addLayerPlane(group, 'y', value, planeSize, planeHeight, green);
+    addAxisLabel(group, yNodeFenValues[index], `${xHalf + 0.72} ${value} ${zHalf + 0.72}`, green, '0 1 0 0');
+    if (includeYPlanes) addLayerPlane(group, 'y', value, xLength, zLength, planeHeight, green);
   });
 
   scene.appendChild(group);
@@ -713,25 +788,40 @@ function createGroundProjection({
     if (!scene) return;
 
     const step = getDimensionStepSize();
-    const displayCount = getDimensionDisplayCount();
-    const half = displayCount * step / 2;
-    const size = Math.max(half * 2, step);
+    const xMajorFenPositions = getXMajorFenPositions();
+    const xMajorPositions = getXMajorPositions();
+    const xHalf = Math.max(...xMajorPositions.map(Math.abs));
+    const zMajorFenPositions = getZMajorFenPositions();
+    const zMajorPositions = getZMajorPositions();
+    const zHalf = Math.max(...zMajorPositions.map(Math.abs));
+    const xSize = Math.max(xHalf * 2, step);
+    const zSize = Math.max(zHalf * 2, step);
     const [anchorX, , anchorZ] = getDimensionAnchorPosition();
 
     const group = document.createElement('transform');
     group.id = id;
     group.setAttribute('translation', `${anchorX} ${y} ${anchorZ}`);
 
-    addGroundProjectionSurface(group, size, {
+    addGroundProjectionSurface(group, xSize, zSize, {
       planeMaterialId,
       pickFunction: pickFnName,
       hoverFunction: hoverFnName,
       unhoverFunction: unhoverFnName,
     });
 
-    if (onBuildExtra) onBuildExtra(group, size, half);
+    if (onBuildExtra) onBuildExtra(group, xSize, zSize, xHalf, zHalf);
 
-    addGroundRuler(group, half, step, displayCount, `y=${formatY()}`, labelId);
+    addGroundRuler(
+      group,
+      xHalf,
+      zHalf,
+      xMajorFenPositions,
+      xMajorPositions,
+      zMajorFenPositions,
+      zMajorPositions,
+      `y=${formatY()}`,
+      labelId
+    );
 
     scene.appendChild(group);
     setSelected(false);
@@ -773,19 +863,24 @@ function addGroundLabel(group, textValue, translation, id = '') {
   group.appendChild(transform);
 }
 
-function formatSignedFenLabel(value) {
-  const fenValue = Math.round(value / getAbsoluteDimensionFenSize());
-  return fenValue === 0 ? '0' : String(fenValue);
-}
-
-function addGroundRuler(group, half, step, displayCount, yLabel, yLabelId) {
+function addGroundRuler(
+  group,
+  xHalf,
+  zHalf,
+  xMajorFenPositions,
+  xMajorPositions,
+  zMajorFenPositions,
+  zMajorPositions,
+  yLabel,
+  yLabelId
+) {
   const linePoints = [
-    `${-half} 0 ${-half}`, `${half} 0 ${-half}`,
-    `${half} 0 ${-half}`, `${half} 0 ${half}`,
-    `${half} 0 ${half}`, `${-half} 0 ${half}`,
-    `${-half} 0 ${half}`, `${-half} 0 ${-half}`,
-    `${-half} 0 0`, `${half} 0 0`,
-    `0 0 ${-half}`, `0 0 ${half}`,
+    `${-xHalf} 0 ${-zHalf}`, `${xHalf} 0 ${-zHalf}`,
+    `${xHalf} 0 ${-zHalf}`, `${xHalf} 0 ${zHalf}`,
+    `${xHalf} 0 ${zHalf}`, `${-xHalf} 0 ${zHalf}`,
+    `${-xHalf} 0 ${zHalf}`, `${-xHalf} 0 ${-zHalf}`,
+    `${-xHalf} 0 0`, `${xHalf} 0 0`,
+    `0 0 ${-zHalf}`, `0 0 ${zHalf}`,
   ];
   const lineSegments = [];
 
@@ -793,34 +888,43 @@ function addGroundRuler(group, half, step, displayCount, yLabel, yLabelId) {
     lineSegments.push(`${i} ${i + 1} -1`);
   }
 
-  for (let value = -half; value <= half; value += step) {
+  xMajorPositions.forEach((value, index) => {
     const xTickStart = linePoints.length;
-    linePoints.push(`${value} 0 ${-half}`, `${value} 0 ${-half - 0.45}`);
+    linePoints.push(`${value} 0 ${-zHalf}`, `${value} 0 ${-zHalf - 0.45}`);
     lineSegments.push(`${xTickStart} ${xTickStart + 1} -1`);
 
+    const fenValue = xMajorFenPositions[index];
+    addGroundLabel(group, fenValue === 0 ? '0' : String(fenValue), `${value} 0 ${-zHalf - 0.95}`);
+  });
+
+  zMajorPositions.forEach((value, index) => {
     const zTickStart = linePoints.length;
-    linePoints.push(`${-half} 0 ${value}`, `${-half - 0.45} 0 ${value}`);
+    linePoints.push(`${-xHalf} 0 ${value}`, `${-xHalf - 0.45} 0 ${value}`);
     lineSegments.push(`${zTickStart} ${zTickStart + 1} -1`);
 
-    addGroundLabel(group, formatSignedFenLabel(value), `${value} 0 ${-half - 0.95}`);
-    addGroundLabel(group, formatSignedFenLabel(value), `${-half - 0.95} 0 ${value}`);
-  }
+    const fenValue = zMajorFenPositions[index];
+    addGroundLabel(group, fenValue === 0 ? '0' : String(fenValue), `${-xHalf - 0.95} 0 ${value}`);
+  });
 
   const fineLinePoints = [];
   const fineLineSegments = [];
-  const fineDivisions = displayCount * FEN_PER_MAJOR_UNIT;
-  const fineStep = step / FEN_PER_MAJOR_UNIT;
+  const xMajorFenSet = new Set(xMajorFenPositions);
+  const measurementFenSize = getDimensionFenSize();
 
-  for (let i = 0; i <= fineDivisions; i++) {
-    if (i % FEN_PER_MAJOR_UNIT === 0) continue;
-    const value = -half + i * fineStep;
-
+  for (let fen = xMajorFenPositions[0]; fen <= xMajorFenPositions[xMajorFenPositions.length - 1]; fen++) {
+    if (xMajorFenSet.has(fen)) continue;
+    const value = fen * measurementFenSize;
     const xTickStart = fineLinePoints.length;
-    fineLinePoints.push(`${value} 0 ${-half}`, `${value} 0 ${-half - 0.22}`);
+    fineLinePoints.push(`${value} 0 ${-zHalf}`, `${value} 0 ${-zHalf - 0.22}`);
     fineLineSegments.push(`${xTickStart} ${xTickStart + 1} -1`);
+  }
 
+  const zMajorFenSet = new Set(zMajorFenPositions);
+  for (let fen = zMajorFenPositions[0]; fen <= zMajorFenPositions[zMajorFenPositions.length - 1]; fen++) {
+    if (zMajorFenSet.has(fen)) continue;
+    const value = fen * measurementFenSize;
     const zTickStart = fineLinePoints.length;
-    fineLinePoints.push(`${-half} 0 ${value}`, `${-half - 0.22} 0 ${value}`);
+    fineLinePoints.push(`${-xHalf} 0 ${value}`, `${-xHalf - 0.22} 0 ${value}`);
     fineLineSegments.push(`${zTickStart} ${zTickStart + 1} -1`);
   }
 
@@ -846,10 +950,10 @@ function addGroundRuler(group, half, step, displayCount, yLabel, yLabelId) {
   lineShape.appendChild(lineSet);
   group.appendChild(lineShape);
 
-  addGroundLabel(group, yLabel, `${half + 1.35} 0 ${half + 0.75}`, yLabelId);
+  addGroundLabel(group, yLabel, `${xHalf + 1.35} 0 ${zHalf + 0.75}`, yLabelId);
 }
 
-function addGroundProjectionSurface(group, size, { planeMaterialId, pickFunction, hoverFunction, unhoverFunction }) {
+function addGroundProjectionSurface(group, xSize, zSize, { planeMaterialId, pickFunction, hoverFunction, unhoverFunction }) {
   const planeTransform = document.createElement('transform');
   const planeShape = document.createElement('shape');
   const plane = document.createElement('box');
@@ -858,7 +962,7 @@ function addGroundProjectionSurface(group, size, { planeMaterialId, pickFunction
   planeMaterial.id = planeMaterialId;
 
   planeTransform.setAttribute('translation', '0 -0.02 0');
-  plane.setAttribute('size', `${size} 0.04 ${size}`);
+  plane.setAttribute('size', `${xSize} 0.04 ${zSize}`);
   planeShape.appendChild(planeAppearance);
   planeShape.appendChild(plane);
   planeTransform.appendChild(planeShape);
@@ -872,7 +976,7 @@ function addGroundProjectionSurface(group, size, { planeMaterialId, pickFunction
   pickShape.setAttribute('onmousedown', `window.${pickFunction}(event)`);
   pickShape.setAttribute('onmouseover', `window.${hoverFunction}(event)`);
   pickShape.setAttribute('onmouseout', `window.${unhoverFunction}(event)`);
-  pickBox.setAttribute('size', `${size} 0.12 ${size}`);
+  pickBox.setAttribute('size', `${xSize} 0.12 ${zSize}`);
   pickShape.appendChild(createMaterial('1 1 1', '0.98'));
   pickShape.appendChild(pickBox);
   pickTransform.appendChild(pickShape);
@@ -880,9 +984,9 @@ function addGroundProjectionSurface(group, size, { planeMaterialId, pickFunction
 }
 
 
-function addSectionVoidToGroup(group, size, half) {
+function addSectionVoidToGroup(group, xSize, zSize, xHalf, zHalf) {
   const points = [
-    `${-half} 0 ${-half}`, `${half} 0 ${-half}`, `${half} 0 ${half}`, `${-half} 0 ${half}`,
+    `${-xHalf} 0 ${-zHalf}`, `${xHalf} 0 ${-zHalf}`, `${xHalf} 0 ${zHalf}`, `${-xHalf} 0 ${zHalf}`,
   ];
   const segments = [
     '0 1 -1', '1 2 -1', '2 3 -1', '3 0 -1',
@@ -1651,7 +1755,147 @@ function applyViewpointConfig(config) {
   Object.entries(config.viewpoint).forEach(([name, value]) => {
     viewpoint.setAttribute(name, value);
   });
+
+  const position = parseVec3(config.viewpoint.position || '0 0 50');
+  viewpoint.setAttribute('centerOfRotation', `${position[0] || 0} ${position[1] || 0} 0`);
 }
+
+const CAMERA_AXIS_DIRECTIONS = {
+  'x:1': {
+    offset: [1, 0, 0],
+    orientation: '0 1 0 1.570796',
+  },
+  'x:-1': {
+    offset: [-1, 0, 0],
+    orientation: '0 1 0 -1.570796',
+  },
+  'y:1': {
+    offset: [0, 1, 0],
+    orientation: '1 0 0 -1.570796',
+  },
+  'y:-1': {
+    offset: [0, -1, 0],
+    orientation: '1 0 0 1.570796',
+  },
+  'z:1': {
+    offset: [0, 0, 1],
+    orientation: '0 0 1 0',
+  },
+  'z:-1': {
+    offset: [0, 0, -1],
+    orientation: '0 1 0 3.141593',
+  },
+};
+
+function getCameraAxisViewSetup() {
+  const config = MODEL_CONFIGS[activeModelKey];
+  const position = parseVec3(config?.viewpoint?.position || '0 0 50');
+  const target = [position[0] || 0, position[1] || 0, 0];
+  const distance = Math.max(
+    Math.hypot(
+      position[0] - target[0],
+      position[1] - target[1],
+      position[2] - target[2],
+    ),
+    1,
+  );
+
+  return { target, distance };
+}
+
+function setCameraAxisView(axis, sign) {
+  const direction = CAMERA_AXIS_DIRECTIONS[`${axis}:${sign}`];
+  const viewpoint = getMainViewpoint();
+  if (!direction || !viewpoint) return;
+
+  const { target, distance } = getCameraAxisViewSetup();
+  const position = target.map((value, index) => value + direction.offset[index] * distance);
+
+  viewpoint.setAttribute('position', position.join(' '));
+  viewpoint.setAttribute('orientation', direction.orientation);
+  viewpoint.setAttribute('centerOfRotation', target.join(' '));
+  viewpoint.setAttribute('set_bind', 'true');
+}
+
+function initCameraAxisWidget() {
+  const widget = document.getElementById('camera-axis-widget');
+  const x3d = document.getElementById('x3d');
+  if (!widget || !x3d) return;
+
+  const center = 56;
+  const radius = 37;
+  const axisVectors = {
+    x: [1, 0, 0],
+    y: [0, 1, 0],
+    z: [0, 0, 1],
+  };
+  const lines = Object.fromEntries(
+    Array.from(widget.querySelectorAll('.camera-axis-line')).map(line => [line.dataset.axis, line]),
+  );
+  const ends = Array.from(widget.querySelectorAll('.camera-axis-end'));
+
+  ends.forEach(button => {
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      setCameraAxisView(button.dataset.axis, Number(button.dataset.sign));
+    });
+  });
+
+  function projectAxis(vector, matrix) {
+    return {
+      x: matrix[0] * vector[0] + matrix[4] * vector[1] + matrix[8] * vector[2],
+      y: matrix[1] * vector[0] + matrix[5] * vector[1] + matrix[9] * vector[2],
+      depth: matrix[2] * vector[0] + matrix[6] * vector[1] + matrix[10] * vector[2],
+    };
+  }
+
+  function render() {
+    let matrix = null;
+
+    try {
+      matrix = x3d.runtime?.viewMatrix?.().toGL?.();
+    } catch (_error) {
+      matrix = null;
+    }
+
+    if (matrix?.length >= 16) {
+      const projected = {};
+
+      Object.entries(axisVectors).forEach(([axis, vector]) => {
+        projected[axis] = projectAxis(vector, matrix);
+        const line = lines[axis];
+        const point = projected[axis];
+
+        line.setAttribute('x1', center - point.x * radius);
+        line.setAttribute('y1', center + point.y * radius);
+        line.setAttribute('x2', center + point.x * radius);
+        line.setAttribute('y2', center - point.y * radius);
+      });
+
+      ends
+        .map(button => {
+          const axis = button.dataset.axis;
+          const sign = Number(button.dataset.sign);
+          const point = projected[axis];
+          const depth = point.depth * sign;
+
+          button.style.left = `${center + point.x * radius * sign}px`;
+          button.style.top = `${center - point.y * radius * sign}px`;
+          return { button, depth };
+        })
+        .sort((a, b) => a.depth - b.depth)
+        .forEach(({ button }, index) => {
+          button.style.zIndex = String(index + 1);
+        });
+    }
+
+    requestAnimationFrame(render);
+  }
+
+  requestAnimationFrame(render);
+}
+
+initCameraAxisWidget();
 
 function resetOriginalModelState() {
   Object.values(_animRaf).forEach(handle => {

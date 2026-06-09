@@ -14,6 +14,8 @@ const DIMENSION_CENTER_Z = 0.011413;
 const DIMENSION_ANCHOR_DEF = '_01_Lu_Dou';
 const FEN_PER_MAJOR_UNIT = 30;
 const FEN_DISTANCE_SCALE = 1.5;
+const X_MAJOR_CELL_FEN_WIDTHS = [25, 30, 30, 25];
+const Z_MAJOR_CELL_FEN_WIDTHS = [18, 30, 30, 18];
 
 // ── 材等 ──
 const CAI_GRADE_VALUES = {

@@ -39,6 +39,88 @@
       display: block;
     }
 
+    #camera-axis-widget {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 9;
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      background: rgba(28, 28, 32, 0.2);
+      user-select: none;
+    }
+
+    #camera-axis-lines {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    .camera-axis-line {
+      stroke-width: 3;
+      stroke-linecap: round;
+      opacity: 0.82;
+    }
+
+    .camera-axis-line[data-axis="x"] { stroke: #e85d68; }
+    .camera-axis-line[data-axis="y"] { stroke: #57c96f; }
+    .camera-axis-line[data-axis="z"] { stroke: #559ee8; }
+
+    .camera-axis-end {
+      position: absolute;
+      left: 56px;
+      top: 56px;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      transform: translate(-50%, -50%);
+      border: 1px solid rgba(0, 0, 0, 0.42);
+      border-radius: 50%;
+      color: #fff;
+      font: 800 9px/1 'Segoe UI', sans-serif;
+      cursor: pointer;
+      box-shadow: none;
+    }
+
+    .camera-axis-end[data-axis="x"] {
+      background: #8f2630;
+    }
+
+    .camera-axis-end[data-axis="y"] {
+      background: #216f35;
+    }
+
+    .camera-axis-end[data-axis="z"] {
+      background: #255f99;
+    }
+
+    .camera-axis-end[data-sign="-1"] {
+      width: 15px;
+      height: 15px;
+      border-width: 3px;
+      background: #fff;
+      color: transparent;
+      opacity: 1;
+    }
+
+    .camera-axis-end[data-axis="x"][data-sign="-1"] { border-color: #8f2630; }
+    .camera-axis-end[data-axis="y"][data-sign="-1"] { border-color: #216f35; }
+    .camera-axis-end[data-axis="z"][data-sign="-1"] { border-color: #255f99; }
+
+    .camera-axis-end:hover {
+      filter: brightness(1.18);
+      opacity: 1;
+    }
+
+    .camera-axis-end:focus-visible {
+      outline: 2px solid #fff;
+      outline-offset: 2px;
+    }
+
     #model-bottom-bar {
       position: absolute;
       left: 50%;
@@ -112,12 +194,11 @@
                   0 3px 10px rgba(0, 0, 0, 0.32);
     }
 
-    .feature-light:nth-child(1) { background: #e35d5d; }
-    .feature-light:nth-child(2) { background: #e8c755; }
-    .feature-light:nth-child(3) { background: #62c76b; }
-    .feature-light:nth-child(4) { background: #55a7e8; }
-    .feature-light:nth-child(5) { background: #b875e8; }
-    .feature-light[data-feature="ground-projection-copy"] { background: #e35d5d; }
+    .feature-light[data-feature="unit-grid"] { background: #e35d5d; }
+    .feature-light[data-feature="axis-markers"] { background: #e8c755; }
+    .feature-light[data-feature="axis-layer-planes"] { background: #62c76b; }
+    .feature-light[data-feature="ground-projection"] { background: #55a7e8; }
+    .feature-light[data-feature="ground-projection-copy"] { background: #c9a7e8; }
 
     /* ── Feature count date window ── */
     .feature-count-control {
@@ -461,6 +542,19 @@
 
   <!-- Left: 3D model (unchanged) -->
   <div id="left-panel">
+    <div id="camera-axis-widget" aria-label="相機軸向視角">
+      <svg id="camera-axis-lines" viewBox="0 0 112 112" aria-hidden="true">
+        <line class="camera-axis-line" data-axis="x"></line>
+        <line class="camera-axis-line" data-axis="y"></line>
+        <line class="camera-axis-line" data-axis="z"></line>
+      </svg>
+      <button class="camera-axis-end" type="button" data-axis="x" data-sign="1" aria-label="Positive X view">X</button>
+      <button class="camera-axis-end" type="button" data-axis="x" data-sign="-1" aria-label="Negative X view">X</button>
+      <button class="camera-axis-end" type="button" data-axis="y" data-sign="1" aria-label="Positive Y view">Y</button>
+      <button class="camera-axis-end" type="button" data-axis="y" data-sign="-1" aria-label="Negative Y view">Y</button>
+      <button class="camera-axis-end" type="button" data-axis="z" data-sign="1" aria-label="Positive Z view">Z</button>
+      <button class="camera-axis-end" type="button" data-axis="z" data-sign="-1" aria-label="Negative Z view">Z</button>
+    </div>
     <button id="model-switch-toggle" type="button" aria-label="切換模型">Palace</button>
     <x3d id="x3d">
       <scene>
