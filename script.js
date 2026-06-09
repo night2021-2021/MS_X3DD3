@@ -119,10 +119,8 @@ function isMeasurementFeature(feature) {
 }
 
 function setFenToggleVisibility(visible) {
-  ['fen-grid-toggle', 'fen-subgrid-toggle'].forEach(id => {
-    const toggle = document.getElementById(id);
-    if (toggle) toggle.classList.toggle('is-visible', visible);
-  });
+  const toggle = document.getElementById('fen-grid-toggle');
+  if (toggle) toggle.classList.toggle('is-visible', visible);
 }
 
 function setActiveDimensionFeature(feature) {
@@ -580,8 +578,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
   addCylinder(group, `0 ${half} 0`, null, length, green);
   addCylinder(group, '0 0 0', '1 0 0 1.5708', Math.max(xzLength, step), blue);
 
-  const xzLabelSide = includeYPlanes ? 1 : -1;
-  const xzLabelOffset = xzLabelSide * (xzHalf + 0.72);
+  const xzLabelOffset = xzHalf + 0.72;
 
   for (let value = -xzHalf; value <= xzHalf; value += step) {
     addSphere(group, `${value} 0 0`, red);
@@ -1460,27 +1457,6 @@ function initFineFenGridToggle() {
 }
 
 initFineFenGridToggle();
-
-function initFenSubgridToggle() {
-  const toggle = document.getElementById('fen-subgrid-toggle');
-  if (!toggle) return;
-
-  function render() {
-    const isAbsolute = fenMeasurementMode === 'absolute';
-    toggle.textContent = isAbsolute ? '分' : '份';
-    toggle.classList.remove('is-active');
-    toggle.setAttribute('aria-pressed', 'false');
-  }
-
-  render();
-  toggle.addEventListener('click', () => {
-    fenMeasurementMode = fenMeasurementMode === 'relative' ? 'absolute' : 'relative';
-    render();
-    if (isMeasurementFeature(activeDimensionFeature)) refreshActiveDimensionFeature();
-  });
-}
-
-initFenSubgridToggle();
 
 function getGeometryGroupForPart(transform) {
   const group = transform.querySelector('Group');
