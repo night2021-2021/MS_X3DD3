@@ -1921,7 +1921,7 @@ function setModelSwitchLoading(isLoading) {
   const button = document.getElementById('model-switch-toggle');
   if (!button) return;
   button.disabled = isLoading;
-  button.textContent = isLoading ? 'Loading' : MODEL_CONFIGS[activeModelKey].label;
+  button.textContent = isLoading ? 'Loading' : 'Palace Viewer';
 }
 
 function initOriginalModelTools() {
@@ -1993,9 +1993,11 @@ function initModelSwitchToggle() {
   const button = document.getElementById('model-switch-toggle');
   if (!button) return;
 
-  button.textContent = MODEL_CONFIGS[activeModelKey].label;
+  button.textContent = 'Palace Viewer';
   button.addEventListener('click', () => {
-    loadModel(activeModelKey === 'original' ? 'palace' : 'original');
+    const url = new URL('viewer.html', window.location.href);
+    url.searchParams.set('model', 'palace');
+    window.open(url.toString(), '_blank', 'noopener');
   });
 }
 
