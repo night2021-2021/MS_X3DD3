@@ -14,10 +14,13 @@
 })();
 
 const targetScene = document.querySelector('scene');
+const DEFAULT_WOOD_COLOR = '0.450 0.280 0.140';
 let activeModelKey = 'palace';
 let modelLoadRequestId = 0;
 let palaceViewCenter = [0, 8, 0];
 let palaceViewDistance = 80;
+let autoRotateId = null;
+let autoRotateStart = null;
 
 function parseVec3(value) {
   return String(value || '')
@@ -49,6 +52,12 @@ function updateUrlModelKey(modelKey) {
   window.history.replaceState(null, '', url);
 }
 
+function setActiveModelListItem(match) {
+  document.querySelectorAll('#model-list li').forEach(li => {
+    li.classList.toggle('is-active', Object.entries(match).every(([key, value]) => li.dataset[key] === value));
+  });
+}
+
 function setViewerStatus(message) {
   const status = document.getElementById('viewer-status');
   if (!status) return;
@@ -58,11 +67,57 @@ function setViewerStatus(message) {
 }
 
 function setModelSwitchLoading(isLoading) {
-  document.title = isLoading ? 'Loading Palace Viewer' : 'Palace Viewer';
+  document.title = isLoading ? '載入中... — 模型瀏覽器' : '模型瀏覽器';
 }
 
 function reloadX3dom() {
   if (window.x3dom) x3dom.reload();
+}
+
+function localNameEquals(node, name) {
+  return node?.localName?.toLowerCase() === name;
+}
+
+function childByLocalName(node, name) {
+  return Array.from(node?.children || []).find(child => localNameEquals(child, name));
+}
+
+function createX3dElement(doc, sourceNode, tagName) {
+  return sourceNode?.namespaceURI
+    ? doc.createElementNS(sourceNode.namespaceURI, tagName)
+    : doc.createElement(tagName);
+}
+
+function applyDefaultWoodMaterial(x3dDoc) {
+  const shapes = Array.from(x3dDoc.getElementsByTagName('*')).filter(node => localNameEquals(node, 'shape'));
+
+  shapes.forEach(shape => {
+    let appearance = childByLocalName(shape, 'appearance');
+
+    if (!appearance) {
+      appearance = createX3dElement(x3dDoc, shape, 'Appearance');
+      shape.insertBefore(appearance, shape.firstChild);
+    }
+
+    if (childByLocalName(appearance, 'material')) return;
+
+    const material = createX3dElement(x3dDoc, appearance, 'Material');
+    material.setAttribute('diffuseColor', DEFAULT_WOOD_COLOR);
+    material.setAttribute('ambientIntensity', '0.35');
+    material.setAttribute('specularColor', '0.08 0.05 0.025');
+    material.setAttribute('shininess', '0.18');
+    appearance.insertBefore(material, appearance.firstChild);
+  });
+}
+
+function importX3dSceneChildren(x3dDoc, wrapper) {
+  const srcScene = Array.from(x3dDoc.getElementsByTagName('*')).find(node => localNameEquals(node, 'scene'));
+  if (!srcScene) throw new Error('X3D has no Scene element');
+
+  Array.from(srcScene.children).forEach(child => {
+    if (['navigationinfo', 'background', 'viewpoint'].includes(child.localName.toLowerCase())) return;
+    wrapper.appendChild(document.importNode(child, true));
+  });
 }
 
 function vec3FromAny(value) {
@@ -148,38 +203,34 @@ function applyPalaceFrontView() {
   return hasBounds;
 }
 
-function schedulePalaceFrontView(duration = 9000) {
-  const startedAt = performance.now();
-
-  function tick() {
-    applyPalaceFrontView();
-    if (performance.now() - startedAt < duration) {
-      window.setTimeout(tick, 500);
-    }
-  }
-
-  tick();
-}
-
-function startPalaceLoadWatcher(requestId) {
+function startPalaceLoadWatcher(requestId, onFinish) {
   const startedAt = performance.now();
   let finished = false;
   let attempts = 0;
+  let tickTimer = null;
 
   function finish() {
     if (finished || requestId !== modelLoadRequestId) return;
     finished = true;
-    schedulePalaceFrontView();
+    if (tickTimer !== null) window.clearTimeout(tickTimer);
+    applyPalaceFrontView();
     setModelSwitchLoading(false);
     setViewerStatus('');
+    if (typeof onFinish === 'function') onFinish();
+  }
+
+  function queueTick(delay = 500) {
+    if (finished || tickTimer !== null) return;
+    tickTimer = window.setTimeout(tick, delay);
   }
 
   function tick() {
+    tickTimer = null;
     if (finished || requestId !== modelLoadRequestId) return;
 
     attempts += 1;
     const elapsed = performance.now() - startedAt;
-    const fitted = attempts > 2 ? applyPalaceFrontView() : false;
+    const fitted = attempts > 2 ? updatePalaceViewFromBounds() : false;
 
     if (fitted && elapsed > 1200) {
       finish();
@@ -191,20 +242,22 @@ function startPalaceLoadWatcher(requestId) {
       return;
     }
 
-    window.setTimeout(tick, 500);
+    queueTick();
   }
 
-  window.setTimeout(tick, 500);
-  return finish;
+  queueTick();
+  return () => queueTick(100);
 }
 
 function loadModel(modelKey) {
   const config = MODEL_CONFIGS[modelKey];
   if (!config || !targetScene) return;
+  stopAutoRotate();
 
   const requestId = ++modelLoadRequestId;
   activeModelKey = modelKey;
   updateUrlModelKey(modelKey);
+  setActiveModelListItem({ modelKey });
   applyViewpointConfig(config);
   setModelSwitchLoading(true);
   setViewerStatus('Loading Palace');
@@ -219,10 +272,10 @@ function loadModel(modelKey) {
 
   const inline = document.createElement('inline');
   inline.setAttribute('url', config.url);
-  const finishLoading = startPalaceLoadWatcher(requestId);
+  const nudgeLoadWatcher = startPalaceLoadWatcher(requestId);
   ['load', 'loaded', 'x3domload'].forEach(eventName => {
     inline.addEventListener(eventName, () => {
-      window.setTimeout(finishLoading, 500);
+      window.setTimeout(nudgeLoadWatcher, 500);
     });
   });
   inline.addEventListener('error', error => {
@@ -372,5 +425,123 @@ function initCameraAxisWidget() {
   requestAnimationFrame(render);
 }
 
+function stopAutoRotate() {
+  if (autoRotateId !== null) {
+    cancelAnimationFrame(autoRotateId);
+    autoRotateId = null;
+  }
+  autoRotateStart = null;
+}
+
+function startAutoRotate() {
+  stopAutoRotate();
+  autoRotateStart = performance.now();
+
+  function tick(now) {
+    const wrapper = document.getElementById('model-wrapper');
+    if (!wrapper) { stopAutoRotate(); return; }
+    const angle = ((now - autoRotateStart) / 6000) * (Math.PI * 2);
+    const [cx, cy, cz] = palaceViewCenter;
+    wrapper.setAttribute('center', `${cx} ${cy} ${cz}`);
+    wrapper.setAttribute('rotation', `0 1 0 ${angle}`);
+    autoRotateId = requestAnimationFrame(tick);
+  }
+
+  autoRotateId = requestAnimationFrame(tick);
+}
+
+function loadCollectedModel(filename) {
+  stopAutoRotate();
+
+  setActiveModelListItem({ filename });
+
+  const requestId = ++modelLoadRequestId;
+  activeModelKey = filename;
+  palaceViewCenter = [0, 0, 0];
+  palaceViewDistance = 80;
+
+  const viewpoint = getMainViewpoint();
+  if (viewpoint) {
+    viewpoint.setAttribute('position', '0 0 80');
+    viewpoint.setAttribute('orientation', '0 1 0 0');
+    viewpoint.setAttribute('centerOfRotation', '0 0 0');
+    viewpoint.setAttribute('fieldOfView', '0.7');
+  }
+
+  setModelSwitchLoading(true);
+  setViewerStatus('載入中');
+
+  const currentWrapper = document.getElementById('model-wrapper');
+  if (currentWrapper) currentWrapper.remove();
+
+  const wrapper = document.createElement('transform');
+  wrapper.id = 'model-wrapper';
+  wrapper.setAttribute('scale', '1 1 1');
+  wrapper.setAttribute('translation', '0 0 0');
+
+  const modelUrl = '_x3d_collected/' + filename + '.x3d';
+
+  fetch(modelUrl)
+    .then(response => {
+      if (!response.ok) throw new Error(`${modelUrl} returned ${response.status}`);
+      return response.text();
+    })
+    .then(text => {
+      if (requestId !== modelLoadRequestId) return;
+
+      const x3dDoc = new DOMParser().parseFromString(text, 'application/xml');
+      const parseError = x3dDoc.querySelector('parsererror');
+      if (parseError) throw new Error(`${modelUrl} could not be parsed`);
+
+      applyDefaultWoodMaterial(x3dDoc);
+      importX3dSceneChildren(x3dDoc, wrapper);
+      targetScene.appendChild(wrapper);
+      reloadX3dom();
+
+      const nudgeLoadWatcher = startPalaceLoadWatcher(requestId, startAutoRotate);
+      window.setTimeout(nudgeLoadWatcher, 100);
+    })
+    .catch(error => {
+      if (requestId !== modelLoadRequestId) return;
+      console.error('Collected X3D load failed:', error);
+      setModelSwitchLoading(false);
+      setViewerStatus('載入失敗');
+    });
+}
+
+function initSidebar() {
+  const list = document.getElementById('model-list');
+  const toggle = document.getElementById('sidebar-toggle');
+  const sidebar = document.getElementById('model-sidebar');
+  if (!list || !toggle || !sidebar) return;
+
+  const palaceConfig = MODEL_CONFIGS?.palace;
+  if (palaceConfig) {
+    const li = document.createElement('li');
+    li.textContent = palaceConfig.url;
+    li.dataset.modelKey = 'palace';
+    li.setAttribute('role', 'option');
+    li.setAttribute('title', palaceConfig.url);
+    li.addEventListener('click', () => loadModel('palace'));
+    list.appendChild(li);
+  }
+
+  (typeof COLLECTED_MODELS !== 'undefined' ? COLLECTED_MODELS : []).forEach(filename => {
+    const li = document.createElement('li');
+    li.textContent = filename;
+    li.dataset.filename = filename;
+    li.setAttribute('role', 'option');
+    li.setAttribute('title', filename);
+    li.addEventListener('click', () => loadCollectedModel(filename));
+    list.appendChild(li);
+  });
+
+  toggle.addEventListener('click', () => {
+    const isOpen = sidebar.classList.toggle('is-open');
+    toggle.setAttribute('aria-label', isOpen ? '收起選單' : '展開選單');
+    toggle.innerHTML = isOpen ? '&#8249;' : '&#9776;';
+  });
+}
+
 initCameraAxisWidget();
-loadModel(activeModelKey);
+initSidebar();

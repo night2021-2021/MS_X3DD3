@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Model Viewer</title>
+  <title>模型瀏覽器</title>
 
   <link rel="stylesheet" href="https://www.x3dom.org/release/x3dom.css">
   <script src="https://www.x3dom.org/release/x3dom.js"></script>
@@ -131,6 +131,117 @@
     #viewer-status.is-visible {
       opacity: 1;
     }
+
+    /* ── Sidebar ── */
+    #model-sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100%;
+      z-index: 20;
+    }
+
+    #sidebar-panel {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 280px;
+      height: 100%;
+      background: rgba(18, 22, 34, 0.96);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: flex;
+      flex-direction: column;
+      transform: translateX(-280px);
+      transition: transform 0.22s cubic-bezier(.4, 0, .2, 1);
+      box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
+      border-right: 1px solid #2d3748;
+    }
+
+    #model-sidebar.is-open #sidebar-panel {
+      transform: translateX(0);
+    }
+
+    #sidebar-toggle {
+      position: fixed;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 22px;
+      height: 64px;
+      background: rgba(18, 22, 34, 0.88);
+      border: 1px solid #4a5568;
+      border-left: none;
+      border-radius: 0 6px 6px 0;
+      color: #a0aec0;
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+      transition: left 0.22s cubic-bezier(.4, 0, .2, 1), color 0.12s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.4);
+      z-index: 21;
+    }
+
+    #sidebar-toggle:hover {
+      color: #e2e8f0;
+      background: rgba(45, 55, 72, 0.95);
+    }
+
+    #model-sidebar.is-open #sidebar-toggle {
+      left: 280px;
+    }
+
+    #sidebar-header {
+      padding: 14px 16px 12px;
+      font: 600 11px/1 "Segoe UI", sans-serif;
+      color: #718096;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      border-bottom: 1px solid #2d3748;
+      flex-shrink: 0;
+    }
+
+    #model-list {
+      list-style: none;
+      margin: 0;
+      padding: 4px 0;
+      overflow-y: auto;
+      flex: 1;
+      scrollbar-width: thin;
+      scrollbar-color: #4a5568 transparent;
+    }
+
+    #model-list::-webkit-scrollbar { width: 4px; }
+    #model-list::-webkit-scrollbar-track { background: transparent; }
+    #model-list::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 2px; }
+
+    #model-list li {
+      padding: 6px 12px 6px 16px;
+      font: 12.5px/1.4 "Segoe UI", sans-serif;
+      color: #a0aec0;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background 0.1s, color 0.1s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #model-list li:hover {
+      background: rgba(255, 255, 255, 0.07);
+      color: #e2e8f0;
+    }
+
+    #model-list li.is-active {
+      background: rgba(49, 130, 206, 0.14);
+      color: #63b3ed;
+      border-left-color: #3182ce;
+      font-weight: 600;
+    }
   </style>
 </head>
 
@@ -162,6 +273,15 @@
     </x3d>
   </main>
 
+  <aside id="model-sidebar">
+    <div id="sidebar-panel">
+      <div id="sidebar-header">模型選單</div>
+      <ul id="model-list" role="listbox" aria-label="選擇模型"></ul>
+    </div>
+    <button id="sidebar-toggle" type="button" aria-label="展開選單">&#9776;</button>
+  </aside>
+
+  <script src="library.js"></script>
   <script src="model-data.js"></script>
   <script src="viewer.js"></script>
 </body>
