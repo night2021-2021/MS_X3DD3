@@ -132,6 +132,35 @@
       opacity: 1;
     }
 
+    #auto-rotate-toggle {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 10;
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      border-radius: 50%;
+      background: rgba(18, 22, 34, 0.78);
+      color: #f7fafc;
+      font: 800 15px/1 "Segoe UI", sans-serif;
+      cursor: pointer;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.32);
+      transition: background 0.14s ease, transform 0.14s ease;
+    }
+
+    #auto-rotate-toggle:hover {
+      background: rgba(45, 55, 72, 0.92);
+      transform: translateY(-1px);
+    }
+
+    #auto-rotate-toggle:focus-visible {
+      outline: 2px solid #fff;
+      outline-offset: 3px;
+    }
+
     /* ── Sidebar ── */
     #model-sidebar {
       position: fixed;
@@ -220,23 +249,56 @@
     #model-list::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 2px; }
 
     #model-list li {
+      margin: 0;
+    }
+
+    .model-folder-toggle,
+    .model-item-button {
+      width: 100%;
+      min-height: 28px;
       padding: 6px 12px 6px 16px;
+      border: 0;
+      background: transparent;
       font: 12.5px/1.4 "Segoe UI", sans-serif;
       color: #a0aec0;
       cursor: pointer;
-      border-left: 3px solid transparent;
+      text-align: left;
       transition: background 0.1s, color 0.1s;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    #model-list li:hover {
+    .model-folder-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #cbd5e0;
+      font-weight: 600;
+    }
+
+    .model-folder-icon {
+      width: 12px;
+      color: #718096;
+      flex: 0 0 auto;
+    }
+
+    .model-item-button {
+      padding-left: 34px;
+      border-left: 3px solid transparent;
+    }
+
+    .model-folder-toggle:hover,
+    .model-item-button:hover {
       background: rgba(255, 255, 255, 0.07);
       color: #e2e8f0;
     }
 
-    #model-list li.is-active {
+    .model-folder.is-collapsed > .model-folder-children {
+      display: none;
+    }
+
+    .model-item.is-active .model-item-button {
       background: rgba(49, 130, 206, 0.14);
       color: #63b3ed;
       border-left-color: #3182ce;
@@ -262,6 +324,7 @@
     </div>
 
     <div id="viewer-status" role="status"></div>
+    <button id="auto-rotate-toggle" type="button" aria-label="暫停自轉" aria-pressed="true">Ⅱ</button>
 
     <x3d id="x3d" showStat="false" showLog="false">
       <param name="PrimitiveQuality" value="low"></param>
@@ -282,7 +345,23 @@
   </aside>
 
   <script src="library.js"></script>
-  <script src="model-data.js"></script>
-  <script src="viewer.js"></script>
+  <script>
+    (function bootstrapSelectedModel() {
+      const params = new URLSearchParams(window.location.search);
+      const selected = params.get('modelData') === '5' ? '5' : '4';
+      window.SELECTED_MODEL_DATA = selected;
+
+      function loadScript(src, onload) {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = onload;
+        document.body.appendChild(script);
+      }
+
+      loadScript(`model-data-${selected}.js`, () => {
+        loadScript('viewer.js');
+      });
+    })();
+  </script>
 </body>
 </html>

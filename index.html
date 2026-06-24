@@ -173,6 +173,102 @@
       transform: translate(-50%, 0);
     }
 
+    #model-data-wheel {
+      display: grid;
+      grid-template-rows: 12px 24px 12px;
+      justify-items: center;
+      align-items: center;
+      margin-right: 4px;
+      padding-right: 10px;
+      border-right: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    #model-data-wheel button {
+      width: 28px;
+      height: 12px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.68);
+      font: 800 9px/1 'Segoe UI', sans-serif;
+      cursor: pointer;
+    }
+
+    #model-data-wheel button:hover,
+    #model-data-wheel button:focus-visible {
+      color: #ffffff;
+      outline: none;
+    }
+
+    #model-data-wheel:focus-visible {
+      outline: 2px solid rgba(255, 255, 255, 0.75);
+      outline-offset: 4px;
+    }
+
+    #model-data-wheel-window {
+      position: relative;
+      width: 32px;
+      height: 24px;
+      overflow: hidden;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.34);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(10, 10, 14, 0.32));
+      box-shadow: inset 0 1px 4px rgba(255, 255, 255, 0.22),
+                  inset 0 -6px 12px rgba(0, 0, 0, 0.24),
+                  0 2px 8px rgba(0, 0, 0, 0.28);
+    }
+
+    #model-data-wheel-window::before,
+    #model-data-wheel-window::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 8px;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    #model-data-wheel-window::before {
+      top: 0;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.42), transparent);
+    }
+
+    #model-data-wheel-window::after {
+      bottom: 0;
+      background: linear-gradient(0deg, rgba(0, 0, 0, 0.42), transparent);
+    }
+
+    #model-data-wheel-value {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      font: 800 13px/1 'Segoe UI', sans-serif;
+      font-variant-numeric: tabular-nums;
+      user-select: none;
+      transform: translateY(0);
+    }
+
+    #model-data-wheel.is-rolling-up #model-data-wheel-value {
+      animation: model-data-roll-up 180ms ease-out;
+    }
+
+    #model-data-wheel.is-rolling-down #model-data-wheel-value {
+      animation: model-data-roll-down 180ms ease-out;
+    }
+
+    @keyframes model-data-roll-up {
+      from { transform: translateY(100%); opacity: 0.25; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @keyframes model-data-roll-down {
+      from { transform: translateY(-100%); opacity: 0.25; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
     .feature-light {
       width: 18px;
       height: 18px;
@@ -200,119 +296,6 @@
     .feature-light[data-feature="ground-projection"] { background: #55a7e8; }
     .feature-light[data-feature="ground-projection-copy"] { background: #c9a7e8; }
 
-    /* ── Feature count date window ── */
-    .feature-count-control {
-      display: flex;
-      align-items: center;
-      gap: 3px;
-      margin-left: 4px;
-      padding-left: 10px;
-      border-left: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    .feature-count-control.is-left {
-      margin-left: 0;
-      margin-right: 4px;
-      padding-left: 0;
-      padding-right: 10px;
-      border-left: 0;
-      border-right: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    .feature-count-control input[type="number"] {
-      position: absolute;
-      width: 42px;
-      height: 26px;
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    .date-stepper {
-      display: grid;
-      grid-template-rows: 12px 24px 12px;
-      justify-items: center;
-      align-items: center;
-    }
-
-    .date-stepper button {
-      width: 28px;
-      height: 12px;
-      border: 0;
-      background: transparent;
-      color: rgba(255, 255, 255, 0.68);
-      font: 800 9px/1 'Segoe UI', sans-serif;
-      cursor: pointer;
-      padding: 0;
-    }
-
-    .date-stepper button:hover,
-    .date-stepper button:focus-visible {
-      color: #ffffff;
-      outline: none;
-    }
-
-    .date-window {
-      position: relative;
-      width: 32px;
-      height: 24px;
-      overflow: hidden;
-      border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.34);
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(10, 10, 14, 0.32));
-      box-shadow: inset 0 1px 4px rgba(255, 255, 255, 0.22),
-                  inset 0 -6px 12px rgba(0, 0, 0, 0.24),
-                  0 2px 8px rgba(0, 0, 0, 0.28);
-    }
-
-    .date-window::before,
-    .date-window::after {
-      content: "";
-      position: absolute;
-      left: 0;
-      right: 0;
-      height: 8px;
-      z-index: 2;
-      pointer-events: none;
-    }
-
-    .date-window::before {
-      top: 0;
-      background: linear-gradient(180deg, rgba(0, 0, 0, 0.42), transparent);
-    }
-
-    .date-window::after {
-      bottom: 0;
-      background: linear-gradient(0deg, rgba(0, 0, 0, 0.42), transparent);
-    }
-
-    .date-wheel {
-      position: absolute;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      color: #ffffff;
-      font: 800 13px/1 'Segoe UI', sans-serif;
-      font-variant-numeric: tabular-nums;
-      transform: translateY(0);
-    }
-
-    .date-stepper.is-rolling-up .date-wheel {
-      animation: date-roll-up 180ms ease-out;
-    }
-
-    .date-stepper.is-rolling-down .date-wheel {
-      animation: date-roll-down 180ms ease-out;
-    }
-
-    @keyframes date-roll-up {
-      from { transform: translateY(100%); opacity: 0.25; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-
-    @keyframes date-roll-down {
-      from { transform: translateY(-100%); opacity: 0.25; }
-      to { transform: translateY(0); opacity: 1; }
-    }
 
     #resizer {
       flex: none;
@@ -577,16 +560,13 @@
       </scene>
     </x3d>
     <div id="feature-lights" aria-hidden="true">
-      <label class="feature-count-control is-left" title="材等">
-        <input id="reserved-feature-count" type="number" min="1" max="8" step="1" value="8" aria-label="材等">
-        <span class="date-stepper" id="reserved-feature-count-stepper" role="spinbutton" tabindex="0" aria-label="材等" aria-valuemin="1" aria-valuemax="8" aria-valuenow="8">
-          <button class="date-step date-step-up" type="button" aria-label="提高材等">▲</button>
-          <span class="date-window" aria-hidden="true">
-            <span class="date-wheel">八</span>
-          </span>
-          <button class="date-step date-step-down" type="button" aria-label="降低材等">▼</button>
+      <div id="model-data-wheel" role="spinbutton" tabindex="0" aria-label="選擇模型" aria-valuemin="4" aria-valuemax="5" aria-valuenow="4">
+        <button id="model-data-up" type="button" aria-label="上一個模型">▲</button>
+        <span id="model-data-wheel-window" aria-hidden="true">
+          <span id="model-data-wheel-value">4</span>
         </span>
-      </label>
+        <button id="model-data-down" type="button" aria-label="下一個模型">▼</button>
+      </div>
       <span class="feature-light" role="button" tabindex="0" data-feature="unit-grid" title="立方格線"></span>
       <span class="feature-light" role="button" tabindex="0" data-feature="axis-markers" title="XYZ 軸標記"></span>
       <span class="feature-light" role="button" tabindex="0" data-feature="axis-layer-planes" title="XYZ 軸切層"></span>
@@ -612,9 +592,26 @@
     </div>
   </div>
 
-  <script src="model-data.js"></script>
-  <script src="script.js"></script>
-  <script src="graph.js"></script>
+  <script>
+    (function bootstrapSelectedModel() {
+      const params = new URLSearchParams(window.location.search);
+      const selected = params.get('modelData') === '5' ? '5' : '4';
+      window.SELECTED_MODEL_DATA = selected;
+
+      function loadScript(src, onload) {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = onload;
+        document.body.appendChild(script);
+      }
+
+      loadScript(`model-data-${selected}.js`, () => {
+        loadScript('script.js', () => {
+          loadScript('graph.js');
+        });
+      });
+    })();
+  </script>
 
 </body>
 </html>

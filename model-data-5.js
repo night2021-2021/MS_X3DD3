@@ -1,0 +1,300 @@
+﻿/* ─────────────────────────────────────────
+   Model constants & pure data tables
+───────────────────────────────────────── */
+
+// ── 模型縮放基準 ──
+const BASE_MODEL_SCALE = 10;
+const BASE_MODEL_TRANSLATION = [0, -10, 0];
+
+// ── 量測系統基準 ──
+const DIMENSION_BASE_Y = -0.652742;
+const DIMENSION_CENTER_X = -0.024254;
+const DIMENSION_CENTER_Z = -0.008242;
+const DIMENSION_ANCHOR_DEF = 'Ludou';
+const DIMENSION_ANCHOR_MODE = 'bottom-center';
+const FEN_PER_MAJOR_UNIT = 30;
+const FEN_DISTANCE_SCALE = 1.5;
+const X_MAJOR_CELL_FEN_WIDTHS = [25, 30, 30, 30, 30, 23];
+const Z_MAJOR_CELL_FEN_WIDTHS = [18, 30, 30, 18];
+
+
+// ── 構件類型與 DEF 名稱 ──
+const TYPE_DEFS = {
+  '枓': ['Ludou',
+         'Sandou', 'Sandou_001', 'Jiaohudou_001', 'Jiaohudou_002',
+         'Sandou_006', 'Sandou_003', 'Sandou_004', 'Sandou_002',
+         'Sandou_007', 'Sandou_005', 'Qixindou_001',
+         'Sandou_011', 'Sandou_010', 'Sandou_009', 'Sandou_015',
+         'Sandou_008', 'Sandou_014', 'Jiaohudou',
+         'Sandou_012', 'Sandou_013', 'Sandou_016', 'Sandou_017'],
+  '栱': ['Nidaogong', 'Mangong', 'Huagong', 'Linggong', 'Huagong_001',
+         'Mangong_002', 'Guazigong_001', 'Guazigong', 'Linggong_001', 'Mangong_001'],
+  '昂': ['Xiaan', 'Shangan'],
+  '栿': ['qian'],
+  '耍頭': ['Shuatou_001', 'Shuatou_002', 'Shuatou'],
+  '枋': ['Liaodanfang', 'Pingchifang_001', 'Yachaofang', 'Chenfangtou_001',
+         'Chenfangtou', 'Jutoufang', 'Pingchifang_002', 'Pingchifang'],
+  '其他': ['group_1', 'group_2', 'group_6', 'group_7', 'instance_8_001',
+           'instance_31_001', 'instance_31_002'],
+};
+
+// ── 各構件組裝後的正確位置（從 x3d 讀取）──
+const ASSEMBLED_POS = {
+  'group_1': [-0.033463, -0.172880,  0.111141],
+  'group_2': [-0.033463, -0.172880, -0.108859],
+  'Nidaogong': [-0.063463, -0.322880, -0.308859],
+  'Liaodanfang': [ 0.636537,  0.306852, -0.277693],
+  'Mangong': [-0.063463, -0.112880, -0.458859],
+  'group_6': [-0.033463,  0.037120, -0.038859],
+  'group_7': [-0.033463,  0.037120,  0.041141],
+  'Pingchifang_001': [-0.563463,  0.307120,  0.381141],
+  'Yachaofang': [-0.107511,  0.406852,  0.481141],
+  'Chenfangtou_001': [ 0.286537,  0.456852,  0.381141],
+  'Chenfangtou': [-0.599026,  0.456852,  0.381141],
+  'Shuatou_001': [ 0.249975,  0.229712,  0.466741],
+  'Shuatou_002': [-0.278276,  0.229679,  0.466741],
+  'Huagong': [-0.373463, -0.322880,  0.051141],
+  'Linggong': [ 0.536537,  0.096852, -0.358859],
+  'Ludou': [ 0.146537, -0.442880, -0.158859],
+  'Shuatou': [-0.863463,  0.097120,  0.051141],
+  'qian': [-0.097463,  0.096852,  0.051141],
+  'Sandou': [-0.093463, -0.172880,  0.331141],
+  'Xiaan': [-0.652294,  0.350067,  0.051141],
+  'Huagong_001': [ 0.286537, -0.112880,  0.051141],
+  'instance_8_001': [ 0.286537, -0.112880,  0.051141],
+  'Mangong_002': [ 0.236537,  0.097078,  0.461141],
+  'Guazigong_001': [-0.363463, -0.112880, -0.308859],
+  'Sandou_001': [-0.093463, -0.172880, -0.188859],
+  'Jiaohudou_001': [-0.393463, -0.172880,  0.091141],
+  'Jiaohudou_002': [ 0.366537, -0.172880,  0.091141],
+  'Guazigong': [ 0.236537, -0.112880, -0.308859],
+  'Sandou_006': [-0.093463,  0.037120,  0.481141],
+  'Sandou_003': [-0.093463,  0.037120, -0.338859],
+  'Sandou_004': [-0.393463,  0.037120, -0.188859],
+  'Sandou_002': [ 0.206537,  0.037120, -0.188859],
+  'Sandou_007': [ 0.206537,  0.037120,  0.331141],
+  'Sandou_005': [-0.393463,  0.037120,  0.331141],
+  'Qixindou_001': [-0.693463,  0.037120,  0.091141],
+  'Linggong_001': [-0.663463,  0.097120, -0.358859],
+  'Mangong_001': [-0.363463,  0.097120, -0.458859],
+  'Jutoufang': [-0.063463,  0.097120,  0.281141],
+  'Sandou_011': [ 0.206537,  0.247078,  0.481141],
+  'Sandou_010': [-0.393463,  0.247120,  0.481141],
+  'Sandou_009': [-0.693463,  0.247120,  0.381141],
+  'Sandou_015': [-0.393463,  0.247120, -0.338859],
+  'Sandou_008': [-0.693463,  0.247120, -0.238859],
+  'Sandou_014': [ 0.206537,  0.247078, -0.338859],
+  'Jiaohudou': [ 0.506537,  0.036852,  0.091141],
+  'instance_31_001': [ 0.506537,  0.036852,  0.091141],
+  'instance_31_002': [ 0.506537,  0.036852,  0.091141],
+  'Sandou_012': [ 0.506537,  0.246852,  0.381141],
+  'Sandou_013': [ 0.506537,  0.246852, -0.238859],
+  'Sandou_016': [-0.693463,  0.247120,  0.091141],
+  'Sandou_017': [ 0.506537,  0.246852,  0.090396],
+  'Shangan': [-0.373463,  0.306852, -0.048859],
+  'Pingchifang_002': [ 0.236537,  0.307078,  0.481141],
+  'Pingchifang': [-0.363463,  0.307078,  0.481141],
+};
+
+// ── 構件顯示名稱 ──
+const DEF_LABELS = {
+  'Ludou':            { zh: '枓',   sub: '櫨枓'     },
+  'Sandou':           { zh: '枓',   sub: '散枓'     },
+  'Sandou_001':       { zh: '枓',   sub: '散枓'     },
+  'Sandou_002':       { zh: '枓',   sub: '散枓'     },
+  'Sandou_003':       { zh: '枓',   sub: '散枓'     },
+  'Sandou_004':       { zh: '枓',   sub: '散枓'     },
+  'Sandou_005':       { zh: '枓',   sub: '散枓'     },
+  'Sandou_006':       { zh: '枓',   sub: '散枓'     },
+  'Sandou_007':       { zh: '枓',   sub: '散枓'     },
+  'Sandou_008':       { zh: '枓',   sub: '散枓'     },
+  'Sandou_009':       { zh: '枓',   sub: '散枓'     },
+  'Sandou_010':       { zh: '枓',   sub: '散枓'     },
+  'Sandou_011':       { zh: '枓',   sub: '散枓'     },
+  'Sandou_012':       { zh: '枓',   sub: '散枓'     },
+  'Sandou_013':       { zh: '枓',   sub: '散枓'     },
+  'Sandou_014':       { zh: '枓',   sub: '散枓'     },
+  'Sandou_015':       { zh: '枓',   sub: '散枓'     },
+  'Sandou_016':       { zh: '枓',   sub: '散枓'     },
+  'Sandou_017':       { zh: '枓',   sub: '散枓'     },
+  'Jiaohudou':        { zh: '枓',   sub: '交互枓'   },
+  'Jiaohudou_001':    { zh: '枓',   sub: '交互枓'   },
+  'Jiaohudou_002':    { zh: '枓',   sub: '交互枓'   },
+  'Qixindou_001':     { zh: '枓',   sub: '齊心枓'   },
+  'Nidaogong':        { zh: '栱',   sub: '泥道栱'   },
+  'Guazigong':        { zh: '栱',   sub: '瓜子栱'   },
+  'Guazigong_001':    { zh: '栱',   sub: '瓜子栱'   },
+  'Mangong':          { zh: '栱',   sub: '慢栱'     },
+  'Mangong_001':      { zh: '栱',   sub: '慢栱'     },
+  'Mangong_002':      { zh: '栱',   sub: '慢栱'     },
+  'Huagong':          { zh: '栱',   sub: '華栱'     },
+  'Huagong_001':      { zh: '栱',   sub: '華栱'     },
+  'Linggong':         { zh: '栱',   sub: '令栱'     },
+  'Linggong_001':     { zh: '栱',   sub: '令栱'     },
+  'Xiaan':            { zh: '昂',   sub: '下昂'     },
+  'Shangan':          { zh: '昂',   sub: '上昂'     },
+  'qian':             { zh: '栿',   sub: '栿'       },
+  'Shuatou':          { zh: '耍頭', sub: '耍頭'     },
+  'Shuatou_001':      { zh: '耍頭', sub: '耍頭'     },
+  'Shuatou_002':      { zh: '耍頭', sub: '耍頭'     },
+  'Liaodanfang':      { zh: '枋',   sub: '撩檐枋'   },
+  'Pingchifang':      { zh: '枋',   sub: '平棊枋'   },
+  'Pingchifang_001':  { zh: '枋',   sub: '平棊枋'   },
+  'Pingchifang_002':  { zh: '枋',   sub: '平棊枋'   },
+  'Yachaofang':       { zh: '枋',   sub: '壓槽枋'   },
+  'Chenfangtou':      { zh: '枋',   sub: '襯枋頭'   },
+  'Chenfangtou_001':  { zh: '枋',   sub: '襯枋頭'   },
+  'Jutoufang':        { zh: '枋',   sub: '舉頭枋'   },
+  'group_1':          { zh: '其他', sub: '構件'     },
+  'group_2':          { zh: '其他', sub: '構件'     },
+  'group_6':          { zh: '其他', sub: '構件'     },
+  'group_7':          { zh: '其他', sub: '構件'     },
+  'instance_8_001':   { zh: '其他', sub: '構件'     },
+  'instance_31_001':  { zh: '其他', sub: '構件'     },
+  'instance_31_002':  { zh: '其他', sub: '構件'     },
+};
+
+// ── 層次組裝順序 ──
+const LAYER_DEFS = [
+  ['Ludou'],
+  ['Nidaogong', 'Huagong'],
+  ['group_1', 'group_2', 'Sandou', 'Sandou_001', 'Jiaohudou_001', 'Jiaohudou_002'],
+  ['Mangong', 'Huagong_001', 'instance_8_001', 'Guazigong_001', 'Guazigong'],
+  [
+    'group_6', 'group_7', 'Sandou_006', 'Sandou_003', 'Sandou_004',
+    'Sandou_002', 'Sandou_007', 'Sandou_005', 'Qixindou_001',
+    'Jiaohudou', 'instance_31_001', 'instance_31_002',
+  ],
+  ['Linggong', 'Shuatou', 'qian', 'Mangong_002', 'Linggong_001', 'Mangong_001', 'Jutoufang'],
+  [
+    'Shuatou_001', 'Shuatou_002', 'Sandou_011', 'Sandou_010', 'Sandou_009',
+    'Sandou_015', 'Sandou_008', 'Sandou_014', 'Sandou_012', 'Sandou_013',
+    'Sandou_016', 'Sandou_017',
+  ],
+  ['Liaodanfang', 'Shangan', 'Pingchifang_001', 'Pingchifang_002', 'Pingchifang', 'Xiaan'],
+  ['Yachaofang', 'Chenfangtou_001', 'Chenfangtou'],
+];
+
+// ── 各類型的固定散落偏移量（x, y, z）──
+const SCATTER_OFFSET = {
+  '枓': [ 0.000000,  0.000000,  1.625600],
+  '栱': [-1.625600,  0.000000, -0.609600],
+  '昂': [ 0.000000,  0.000000, -1.625600],
+  '栿': [ 0.000000,  0.000000, -1.219200],
+  '耍頭': [-1.625600,  0.000000,  0.609600],
+  '枋': [ 1.625600,  0.000000,  0.609600],
+  '其他': [ 1.625600,  0.000000, -0.609600],
+};
+
+const SCATTER_OFFSET_BY_DEF = {
+  'Ludou': [ 0.000000,  0.000000,  0.000000],
+  'Sandou': [ 0.983336,  0.000000, -3.336823],
+  'Sandou_001': [ 1.440536,  0.000000, -2.816835],
+  'Jiaohudou_001': [ 2.197735,  0.000000, -3.096819],
+  'Jiaohudou_002': [ 1.894916,  0.000000, -3.096819],
+  'Sandou_006': [ 2.812136,  0.000000, -3.486836],
+  'Sandou_003': [ 0.983336,  0.000000, -2.209622],
+  'Sandou_004': [ 1.740535,  0.000000, -2.359635],
+  'Sandou_002': [ 1.597736,  0.000000, -2.359635],
+  'Sandou_007': [ 2.054936,  0.000000, -2.879623],
+  'Sandou_005': [ 3.112135,  0.000000, -2.879623],
+  'Qixindou_001': [ 1.583334,  0.000000, -2.182419],
+  'Sandou_011': [ 1.140536,  0.000000, -2.572436],
+  'Sandou_010': [ 2.197735,  0.000000, -2.572436],
+  'Sandou_009': [ 2.954934,  0.000000, -2.472436],
+  'Sandou_015': [ 3.112135,  0.000000, -1.752422],
+  'Sandou_008': [ 1.583334,  0.000000, -1.395222],
+  'Sandou_014': [ 1.140536,  0.000000, -1.295222],
+  'Jiaohudou': [ 1.297737,  0.000000, -1.725219],
+  'Sandou_012': [ 1.754937,  0.000000, -2.015236],
+  'Sandou_013': [ 2.212137,  0.000000, -1.395222],
+  'Sandou_016': [ 1.583334,  0.000000, -1.268019],
+  'Sandou_017': [ 0.840537,  0.000000, -1.267282],
+  'Nidaogong': [-3.212262,  0.000000, -1.909420],
+  'Mangong': [-2.704262,  0.000000, -1.759433],
+  'Huagong': [-1.886280,  0.000000, -2.269439],
+  'Linggong': [-2.288261,  0.000000, -1.859432],
+  'Huagong_001': [-1.530274,  0.000000, -2.269439],
+  'Mangong_002': [-3.512261,  0.000000, -2.222221],
+  'Guazigong_001': [-2.404262,  0.000000, -1.452220],
+  'Guazigong': [-2.496261,  0.000000, -1.452220],
+  'Linggong_001': [-1.088263,  0.000000, -1.402232],
+  'Mangong_001': [-0.880262,  0.000000, -1.302233],
+  'Xiaan': [-2.775839,  0.000000,  2.785161],
+  'Shangan': [-2.445080,  0.000000,  2.885161],
+  'qian': [-1.298677,  0.000000,  2.785161],
+  'Shuatou_001': [-3.525698,  0.000000,  0.997966],
+  'Shuatou_002': [-2.387854,  0.000000,  0.997966],
+  'Shuatou': [-1.193063,  0.000000,  1.413561],
+  'Liaodanfang': [ 1.167740,  0.000000,  1.996415],
+  'Pingchifang_001': [ 2.977337,  0.000000,  1.337564],
+  'Yachaofang': [ 3.130982,  0.000000,  1.237564],
+  'Chenfangtou_001': [ 3.346526,  0.000000,  1.337564],
+  'Chenfangtou': [ 2.403297,  0.000000,  1.845564],
+  'Jutoufang': [ 2.477338,  0.000000,  1.945564],
+  'Pingchifang_002': [ 2.786939,  0.000000,  1.745564],
+  'Pingchifang': [ 3.996538,  0.000000,  1.745564],
+  'group_1': [-3.521659,  0.000000, -0.246634],
+  'group_2': [-2.962859,  0.000000, -0.026619],
+  'group_6': [-2.404059,  0.000000, -0.096622],
+  'group_7': [-1.845259,  0.000000, -0.176632],
+  'instance_8_001': [-3.841674,  0.000000,  0.270561],
+  'instance_31_001': [-3.502863,  0.000000,  0.230581],
+  'instance_31_002': [-2.944063,  0.000000,  0.230581],
+};
+
+const SCATTER_Y = -0.442880;
+const SCATTER_Y_BY_DEF = {
+  'Ludou': -0.442880,
+};
+
+// ── 模型設定 ──
+const MODEL_CONFIGS = {
+  original: {
+    label: 'model5',
+    url: 'model5.x3d',
+    scale: '10 10 10',
+    translation: BASE_MODEL_TRANSLATION.join(' '),
+    enableOriginalTools: true,
+    viewpoint: {
+      position: '0 -10 70',
+      orientation: '0 0 0 0',
+      fieldOfView: '0.6',
+    },
+  },
+  palace: {
+    label: 'model5',
+    url: 'model5.x3d',
+    scale: '10 10 10',
+    translation: BASE_MODEL_TRANSLATION.join(' '),
+    enableOriginalTools: true,
+    viewpoint: {
+      position: '0 -10 70',
+      orientation: '0 0 0 0',
+      fieldOfView: '0.6',
+    },
+  },
+};
+
+Object.assign(window, {
+  BASE_MODEL_SCALE,
+  BASE_MODEL_TRANSLATION,
+  DIMENSION_BASE_Y,
+  DIMENSION_CENTER_X,
+  DIMENSION_CENTER_Z,
+  DIMENSION_ANCHOR_DEF,
+  DIMENSION_ANCHOR_MODE,
+  FEN_PER_MAJOR_UNIT,
+  FEN_DISTANCE_SCALE,
+  X_MAJOR_CELL_FEN_WIDTHS,
+  Z_MAJOR_CELL_FEN_WIDTHS,
+  TYPE_DEFS,
+  ASSEMBLED_POS,
+  DEF_LABELS,
+  LAYER_DEFS,
+  SCATTER_OFFSET,
+  SCATTER_OFFSET_BY_DEF,
+  SCATTER_Y,
+  SCATTER_Y_BY_DEF,
+  MODEL_CONFIGS,
+});

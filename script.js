@@ -19,7 +19,6 @@
 ───────────────────────────────────────── */
 let activeDimensionFeature = null;
 let dimensionFeatureValue = 2;
-let caiGrade = 8;
 
 let assembledModelLocalBottomY = null;
 
@@ -39,32 +38,6 @@ function normalizeDimensionFeatureValue(value) {
   return Math.min(Math.max(parsed, 1), 8);
 }
 
-function normalizeReservedFeatureValue(value) {
-  const parsed = Number.parseInt(value, 10);
-  if (Number.isNaN(parsed)) return caiGrade;
-  return Math.min(Math.max(parsed, 1), 8);
-}
-
-function getCaiScaleFactor() {
-  return CAI_GRADE_VALUES[caiGrade] / CAI_GRADE_VALUES[BASE_CAI_GRADE];
-}
-
-function applyCaiGradeScale() {
-  const wrapper = document.getElementById('model-wrapper');
-  if (!wrapper) return;
-
-  const scale = BASE_MODEL_SCALE * getCaiScaleFactor();
-  const localBottomY = getAssembledModelLocalBottomY();
-  const translationY = BASE_MODEL_TRANSLATION[1] + (BASE_MODEL_SCALE - scale) * localBottomY;
-  wrapper.setAttribute('scale', `${scale} ${scale} ${scale}`);
-  wrapper.setAttribute('translation', `${BASE_MODEL_TRANSLATION[0]} ${translationY} ${BASE_MODEL_TRANSLATION[2]}`);
-  if (isMeasurementFeature(activeDimensionFeature)) {
-    refreshActiveDimensionFeature();
-    return;
-  }
-  if (window.x3dom) x3dom.reload();
-}
-
 function getDimensionDisplayCount() {
   return dimensionFeatureValue * 2;
 }
@@ -74,14 +47,11 @@ function getFenGridMajorCellSize() {
 }
 
 function getFenGridMajorLineRadius() {
-  const baseRadius = 0.018;
-  return fenMeasurementMode === 'relative'
-    ? baseRadius * getCaiScaleFactor()
-    : baseRadius;
+  return 0.018;
 }
 
 function getDimensionMeasurementScale() {
-  return fenMeasurementMode === 'relative' ? getCaiScaleFactor() : 1;
+  return 1;
 }
 
 function getDimensionStepSize() {
@@ -126,6 +96,39 @@ function getZMajorPositions() {
 
 function getAbsoluteDimensionFenSize() {
   return (2 * FEN_DISTANCE_SCALE) / FEN_PER_MAJOR_UNIT;
+}
+
+const DEFAULT_DIMENSION_ORIGIN_OFFSET_FEN = [13, -140, -11.75];
+
+function getDimensionOriginOffsetFen() {
+  const offset = window.DIMENSION_ORIGIN_OFFSET_FEN;
+  if (!Array.isArray(offset)) return DEFAULT_DIMENSION_ORIGIN_OFFSET_FEN;
+
+  return DEFAULT_DIMENSION_ORIGIN_OFFSET_FEN.map((fallback, index) => {
+    const value = Number(offset[index]);
+    return Number.isFinite(value) ? value : fallback;
+  });
+}
+
+function formatDimensionRelativeValue(value) {
+  return Number(value).toFixed(2).replace(/\.?0+$/, '');
+}
+
+function formatDimensionRelativeYFen(worldOffset = 0) {
+  const fenSize = getAbsoluteDimensionFenSize();
+  const fenValue = fenSize ? worldOffset / fenSize : 0;
+  return formatDimensionRelativeValue(fenValue);
+}
+
+function getDimensionToolOriginPosition() {
+  const [anchorX, anchorY, anchorZ] = getDimensionAnchorPosition();
+  const [offsetX, offsetY, offsetZ] = getDimensionOriginOffsetFen();
+  const fenSize = getAbsoluteDimensionFenSize();
+  return [
+    anchorX + offsetX * fenSize,
+    anchorY + offsetY * fenSize,
+    anchorZ + offsetZ * fenSize,
+  ];
 }
 
 function getDimensionAxisLength() {
@@ -212,8 +215,6 @@ function refreshActiveDimensionFeature() {
 (function initFeatureLights() {
   const bar = document.getElementById('model-bottom-bar');
   const lights = document.getElementById('feature-lights');
-  const reservedInput = document.getElementById('reserved-feature-count');
-  const reservedStepper = document.getElementById('reserved-feature-count-stepper');
   if (!bar || !lights) return;
 
   function setOpen(open) {
@@ -251,77 +252,6 @@ function refreshActiveDimensionFeature() {
     handleFeature(e);
   }
 
-  function createDateStepper({ input, stepper, getValue, setValue, normalize, formatValue = value => value, onChange }) {
-    if (!input || !stepper) return null;
-    const wheel = stepper.querySelector('.date-wheel');
-    const countUp = stepper.querySelector('.date-step-up');
-    const countDown = stepper.querySelector('.date-step-down');
-
-    function render(direction = 0) {
-      const value = getValue();
-      input.value = value;
-      if (!wheel) return;
-
-      wheel.textContent = formatValue(value);
-      stepper.setAttribute('aria-valuenow', String(value));
-      stepper.classList.remove('is-rolling-up', 'is-rolling-down');
-
-      if (direction === 0) return;
-      void stepper.offsetWidth;
-      stepper.classList.add(direction > 0 ? 'is-rolling-up' : 'is-rolling-down');
-    }
-
-    function update(value = input.value, direction = 0) {
-      const currentValue = getValue();
-      const nextValue = normalize(value);
-      const animationDirection = direction || Math.sign(nextValue - currentValue);
-      input.value = nextValue;
-      if (nextValue === currentValue) return;
-      setValue(nextValue);
-      render(animationDirection);
-      if (onChange) onChange(nextValue);
-    }
-
-    function step(delta) {
-      update(getValue() + delta, delta);
-    }
-
-    render();
-    input.addEventListener('click', e => e.stopPropagation());
-    input.addEventListener('keydown', e => e.stopPropagation());
-    input.addEventListener('change', () => update());
-    input.addEventListener('input', () => update());
-    stepper.addEventListener('click', e => e.stopPropagation());
-    stepper.addEventListener('keydown', e => {
-      e.stopPropagation();
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        step(1);
-      }
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        step(-1);
-      }
-      if (e.key === 'Home') {
-        e.preventDefault();
-        update(1);
-      }
-      if (e.key === 'End') {
-        e.preventDefault();
-        update(8);
-      }
-    });
-    stepper.addEventListener('wheel', e => {
-      e.preventDefault();
-      e.stopPropagation();
-      step(e.deltaY < 0 ? 1 : -1);
-    }, { passive: false });
-    if (countUp) countUp.addEventListener('click', () => step(1));
-    if (countDown) countDown.addEventListener('click', () => step(-1));
-
-    return { render, update, step };
-  }
-
   bar.addEventListener('click', toggleLights);
   bar.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -332,16 +262,65 @@ function refreshActiveDimensionFeature() {
   lights.addEventListener('click', e => e.stopPropagation());
   lights.addEventListener('click', handleFeature);
   lights.addEventListener('keydown', handleFeatureKey);
-  createDateStepper({
-    input: reservedInput,
-    stepper: reservedStepper,
-    getValue: () => caiGrade,
-    setValue: value => { caiGrade = value; },
-    normalize: normalizeReservedFeatureValue,
-    formatValue: value => CAI_GRADE_LABELS[value] ?? value,
-    onChange: applyCaiGradeScale,
-  });
   document.addEventListener('click', () => setOpen(false));
+})();
+
+(function initModelDataWheel() {
+  const wheel = document.getElementById('model-data-wheel');
+  const value = document.getElementById('model-data-wheel-value');
+  const up = document.getElementById('model-data-up');
+  const down = document.getElementById('model-data-down');
+  if (!wheel || !value || !up || !down) return;
+
+  const options = ['4', '5'];
+  const selected = options.includes(window.SELECTED_MODEL_DATA) ? window.SELECTED_MODEL_DATA : '4';
+  let selectedIndex = options.indexOf(selected);
+  let isChanging = false;
+
+  function render() {
+    const current = options[selectedIndex];
+    value.textContent = current;
+    wheel.setAttribute('aria-valuenow', current);
+  }
+
+  function selectByDelta(delta) {
+    if (isChanging) return;
+    const nextIndex = (selectedIndex + delta + options.length) % options.length;
+    const nextValue = options[nextIndex];
+    if (nextValue === options[selectedIndex]) return;
+
+    isChanging = true;
+    selectedIndex = nextIndex;
+    wheel.classList.remove('is-rolling-up', 'is-rolling-down');
+    void wheel.offsetWidth;
+    wheel.classList.add(delta > 0 ? 'is-rolling-up' : 'is-rolling-down');
+    render();
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('modelData', nextValue);
+    window.setTimeout(() => {
+      window.location.href = url.toString();
+    }, 150);
+  }
+
+  up.addEventListener('click', () => selectByDelta(-1));
+  down.addEventListener('click', () => selectByDelta(1));
+  wheel.addEventListener('wheel', e => {
+    e.preventDefault();
+    selectByDelta(e.deltaY > 0 ? 1 : -1);
+  }, { passive: false });
+  wheel.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      selectByDelta(-1);
+    }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      selectByDelta(1);
+    }
+  });
+
+  render();
 })();
 
 function toggleUnitGrid() {
@@ -372,7 +351,7 @@ function toggleUnitGrid() {
   const xHalf = xFullSize / 2;
   const zFullSize = zFenDivisions * fenSize;
   const zHalf = zFullSize / 2;
-  const [anchorX, anchorY, anchorZ] = getDimensionAnchorPosition();
+  const [anchorX, anchorY, anchorZ] = getDimensionToolOriginPosition();
 
   const transform = document.createElement('transform');
   transform.id = 'unit-cube-grid';
@@ -509,7 +488,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
 
   const group = document.createElement('transform');
   group.id = id;
-  group.setAttribute('translation', getDimensionAnchorPosition().join(' '));
+  group.setAttribute('translation', getDimensionToolOriginPosition().join(' '));
 
   function addCylinder(parent, translation, rotation, height, color) {
     const transform = document.createElement('transform');
@@ -712,13 +691,18 @@ function createGroundProjection({
   pickFnName, hoverFnName, unhoverFnName,
   onUpdateY, onRemove, onBuildExtra, onToggleOn,
 }) {
-  let y = -16.02;
+  let relativeY = 0;
   let selected = false;
   let hovered = false;
   let peer = null;
 
   function formatY() {
-    return y.toFixed(2).replace(/\.?0+$/, '');
+    return formatDimensionRelativeYFen(relativeY);
+  }
+
+  function getWorldY() {
+    const [, anchorY] = getDimensionToolOriginPosition();
+    return anchorY + relativeY;
   }
 
   function updateMaterial() {
@@ -732,8 +716,8 @@ function createGroundProjection({
   function updateY() {
     const el = document.getElementById(id);
     if (!el) return;
-    const [anchorX, , anchorZ] = getDimensionAnchorPosition();
-    el.setAttribute('translation', `${anchorX} ${y} ${anchorZ}`);
+    const [anchorX, anchorY, anchorZ] = getDimensionToolOriginPosition();
+    el.setAttribute('translation', `${anchorX} ${anchorY + relativeY} ${anchorZ}`);
     const label = document.getElementById(labelId);
     if (label) label.setAttribute('string', `"y=${formatY()}"`);
     if (onUpdateY) onUpdateY();
@@ -768,7 +752,7 @@ function createGroundProjection({
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      y += e.deltaY < 0 ? 0.25 : -0.25;
+      relativeY += e.deltaY < 0 ? 0.25 : -0.25;
       updateY();
     }, { capture: true, passive: false });
   }
@@ -796,11 +780,12 @@ function createGroundProjection({
     const zHalf = Math.max(...zMajorPositions.map(Math.abs));
     const xSize = Math.max(xHalf * 2, step);
     const zSize = Math.max(zHalf * 2, step);
-    const [anchorX, , anchorZ] = getDimensionAnchorPosition();
+    relativeY = 0;
+    const [anchorX, anchorY, anchorZ] = getDimensionToolOriginPosition();
 
     const group = document.createElement('transform');
     group.id = id;
-    group.setAttribute('translation', `${anchorX} ${y} ${anchorZ}`);
+    group.setAttribute('translation', `${anchorX} ${anchorY + relativeY} ${anchorZ}`);
 
     addGroundProjectionSurface(group, xSize, zSize, {
       planeMaterialId,
@@ -830,7 +815,7 @@ function createGroundProjection({
     if (window.x3dom) x3dom.reload();
   }
 
-  return { toggle, setSelected, setHovered, getY: () => y, setPeer(p) { peer = p; } };
+  return { toggle, setSelected, setHovered, getY: getWorldY, setPeer(p) { peer = p; } };
 }
 
 const gp = createGroundProjection({
@@ -1058,6 +1043,24 @@ function applyTransformToPoint(point, transform) {
   return rotated.map((value, axis) => value + (translation[axis] ?? 0));
 }
 
+function isTransformElement(element) {
+  return element?.tagName?.toLowerCase() === 'transform';
+}
+
+function applyTransformChainToPoint(point, transform, stopElement = null) {
+  const chain = [];
+  let current = transform;
+
+  while (current && current !== stopElement) {
+    if (isTransformElement(current)) chain.push(current);
+    current = current.parentElement;
+  }
+
+  return chain
+    .reverse()
+    .reduce((position, transformElement) => applyTransformToPoint(position, transformElement), point);
+}
+
 function getCoordinateBounds(group) {
   const coord = group?.querySelector('Coordinate[point], coordinate[point]');
   if (!coord) return null;
@@ -1082,53 +1085,60 @@ function getCoordinateBounds(group) {
   return { min, max };
 }
 
+function getTransformedCoordinateBounds(root) {
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+  let hasPoint = false;
+
+  root.querySelectorAll('Coordinate[point], coordinate[point]').forEach(coord => {
+    const values = coord.getAttribute('point').trim().split(/\s+/).map(Number);
+
+    for (let i = 0; i + 2 < values.length; i += 3) {
+      const localPoint = [values[i], values[i + 1], values[i + 2]];
+      if (localPoint.some(Number.isNaN)) continue;
+
+      const point = applyTransformChainToPoint(localPoint, coord);
+      hasPoint = true;
+      for (let axis = 0; axis < 3; axis++) {
+        min[axis] = Math.min(min[axis], point[axis]);
+        max[axis] = Math.max(max[axis], point[axis]);
+      }
+    }
+  });
+
+  return hasPoint ? { min, max } : null;
+}
+
 function getDimensionAnchorPosition() {
   const transform = document.querySelector(`[DEF="${DIMENSION_ANCHOR_DEF}_TRANSFORM"]`);
-  const wrapper = document.getElementById('model-wrapper');
-  const group = transform && getGeometryGroupForPart(transform);
-  const bounds = group && getCoordinateBounds(group);
 
-  if (!transform || !wrapper || !bounds) {
+  if (!transform) {
     return [DIMENSION_CENTER_X, DIMENSION_BASE_Y, DIMENSION_CENTER_Z];
   }
 
-  const [minX, minY, minZ] = bounds.min;
-  const [maxX, maxY, maxZ] = bounds.max;
-  const corners = [
-    [minX, minY, minZ],
-    [maxX, minY, minZ],
-    [minX, maxY, minZ],
-    [maxX, maxY, minZ],
-    [minX, minY, maxZ],
-    [maxX, minY, maxZ],
-    [minX, maxY, maxZ],
-    [maxX, maxY, maxZ],
-  ].map(point => applyTransformToPoint(point, transform));
-  const minSceneLocalY = Math.min(...corners.map(point => point[1]));
-  const bottomCorners = corners.filter(point => Math.abs(point[1] - minSceneLocalY) < 1e-6);
-  const bottomCenterLocal = bottomCorners.reduce((sum, point) => [
-    sum[0] + point[0] / bottomCorners.length,
-    sum[1] + point[1] / bottomCorners.length,
-    sum[2] + point[2] / bottomCorners.length,
-  ], [0, 0, 0]);
+  const bounds = getTransformedCoordinateBounds(transform);
 
-  return applyTransformToPoint(bottomCenterLocal, wrapper);
+  if (!bounds) {
+    return [DIMENSION_CENTER_X, DIMENSION_BASE_Y, DIMENSION_CENTER_Z];
+  }
+
+  return [
+    (bounds.min[0] + bounds.max[0]) / 2,
+    bounds.min[1],
+    (bounds.min[2] + bounds.max[2]) / 2,
+  ];
 }
 
 function getComponentWorldPosition(defName) {
   const transform = document.querySelector(`[DEF="${defName}_TRANSFORM"]`);
   if (!transform) return null;
 
-  const local = parseVec3(transform.getAttribute('translation'));
-  if (local.length < 3 || local.some(Number.isNaN)) return null;
-  const wrapper = document.getElementById('model-wrapper');
-  const wrapperScale = parseVec3(wrapper?.getAttribute('scale') || `${BASE_MODEL_SCALE} ${BASE_MODEL_SCALE} ${BASE_MODEL_SCALE}`);
-  const wrapperTranslation = parseVec3(wrapper?.getAttribute('translation') || BASE_MODEL_TRANSLATION.join(' '));
+  const position = applyTransformChainToPoint([0, 0, 0], transform);
 
   return {
-    x: local[0] * wrapperScale[0] + wrapperTranslation[0],
-    y: local[1] * wrapperScale[1] + wrapperTranslation[1],
-    z: local[2] * wrapperScale[2] + wrapperTranslation[2],
+    x: position[0],
+    y: position[1],
+    z: position[2],
   };
 }
 
@@ -1329,6 +1339,30 @@ let selectedMovableName = null;
 let selectedType = null;   // 目前 click 選取的 type
 let hoverName    = null;   // 目前 hover 中的 defName
 
+function applyDefaultWoodMaterial(mat) {
+  mat.setAttribute('diffuseColor',    ORIG_DIFFUSE);
+  mat.setAttribute('specularColor',   ORIG_SPEC);
+  mat.setAttribute('emissiveColor',   '0 0 0');
+  mat.setAttribute('ambientIntensity','0');
+  mat.setAttribute('shininess',       '0.5');
+  mat.setAttribute('transparency',    '0');
+}
+
+function normalizeDefaultWoodMaterials(root) {
+  root.querySelectorAll('Appearance, appearance').forEach(app => {
+    let mat = app.querySelector('Material, material');
+    if (!mat) {
+      mat = document.createElement('Material');
+      app.insertBefore(mat, app.firstChild);
+    } else if (mat.hasAttribute('USE')) {
+      const newMat = document.createElement('Material');
+      app.replaceChild(newMat, mat);
+      mat = newMat;
+    }
+    applyDefaultWoodMaterial(mat);
+  });
+}
+
 function initHighlightSystem() {
   if (hlReady) return;
   hlReady = true;
@@ -1347,28 +1381,10 @@ function initHighlightSystem() {
     });
 
     const owned = [];
-    tr.querySelectorAll('Appearance').forEach(app => {
-      let mat = app.querySelector('Material');
-      if (!mat) return;
-      if (mat.hasAttribute('USE')) {
-        const newMat = document.createElement('Material');
-        newMat.setAttribute('diffuseColor',      ORIG_DIFFUSE);
-        newMat.setAttribute('specularColor',      ORIG_SPEC);
-        newMat.setAttribute('emissiveColor',      '0 0 0');
-        newMat.setAttribute('ambientIntensity',   '0');
-        newMat.setAttribute('shininess',          '0.5');
-        newMat.setAttribute('transparency',       '0');
-        app.replaceChild(newMat, mat);
-        owned.push(newMat);
-      } else {
-        mat.setAttribute('diffuseColor',      ORIG_DIFFUSE);
-        mat.setAttribute('specularColor',      ORIG_SPEC);
-        mat.setAttribute('emissiveColor',      '0 0 0');
-        mat.setAttribute('ambientIntensity',   '0');
-        mat.setAttribute('shininess',          '0.5');
-        mat.setAttribute('transparency',       '0');
-        owned.push(mat);
-      }
+    normalizeDefaultWoodMaterials(tr);
+    tr.querySelectorAll('Appearance, appearance').forEach(app => {
+      let mat = app.querySelector('Material, material');
+      if (mat) owned.push(mat);
     });
     matMap[name] = owned;
   });
@@ -1972,9 +1988,9 @@ function loadModel(modelKey) {
         if (!skip) wrapper.appendChild(document.importNode(child, true));
       });
 
+      normalizeDefaultWoodMaterials(wrapper);
       targetScene.appendChild(wrapper);
-      if (config.enableOriginalTools) applyCaiGradeScale();
-      else if (window.x3dom) x3dom.reload();
+      if (window.x3dom) x3dom.reload();
 
       setTimeout(() => {
         if (requestId !== modelLoadRequestId) return;
@@ -1997,6 +2013,7 @@ function initModelSwitchToggle() {
   button.addEventListener('click', () => {
     const url = new URL('viewer.html', window.location.href);
     url.searchParams.set('model', 'palace');
+    url.searchParams.set('modelData', window.SELECTED_MODEL_DATA === '5' ? '5' : '4');
     window.open(url.toString(), '_blank', 'noopener');
   });
 }

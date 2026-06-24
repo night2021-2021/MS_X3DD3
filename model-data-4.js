@@ -3,7 +3,6 @@
 ───────────────────────────────────────── */
 
 // ── 模型縮放基準 ──
-const BASE_CAI_GRADE = 8;
 const BASE_MODEL_SCALE = 10;
 const BASE_MODEL_TRANSLATION = [0, -10, 0];
 
@@ -12,32 +11,12 @@ const DIMENSION_BASE_Y = -14.428800;
 const DIMENSION_CENTER_X = -0.134631;
 const DIMENSION_CENTER_Z = 0.011413;
 const DIMENSION_ANCHOR_DEF = '_01_Lu_Dou';
+const DIMENSION_ANCHOR_MODE = 'bottom-center';
 const FEN_PER_MAJOR_UNIT = 30;
 const FEN_DISTANCE_SCALE = 1.5;
 const X_MAJOR_CELL_FEN_WIDTHS = [25, 30, 30, 25];
 const Z_MAJOR_CELL_FEN_WIDTHS = [18, 30, 30, 18];
 
-// ── 材等 ──
-const CAI_GRADE_VALUES = {
-  1: 9.0,
-  2: 8.25,
-  3: 7.5,
-  4: 7.2,
-  5: 6.6,
-  6: 6.0,
-  7: 5.25,
-  8: 4.5,
-};
-const CAI_GRADE_LABELS = {
-  1: '一',
-  2: '二',
-  3: '三',
-  4: '四',
-  5: '五',
-  6: '六',
-  7: '七',
-  8: '八',
-};
 
 // ── 構件類型與 DEF 名稱 ──
 const TYPE_DEFS = {
@@ -86,16 +65,16 @@ const ASSEMBLED_POS = {
 // ── 構件顯示名稱 ──
 const DEF_LABELS = {
   '_01_Lu_Dou':      { zh: '枓',  sub: '櫨枓'   },
-  '_04_Jiao_Hu_Dou': { zh: '枓',  sub: '交互枓' },
+  '_04_Jiao_Hu_Dou': { zh: '枓',  sub: '齊心枓' },
   '_05_Jiao_Hu_Dou': { zh: '枓',  sub: '交互枓' },
-  '_07_Qi_Xin_Dou':  { zh: '枓',  sub: '齊心枓' },
-  '_08_Qi_Xin_Dou':  { zh: '枓',  sub: '齊心枓' },
+  '_07_Qi_Xin_Dou':  { zh: '枓',  sub: '散枓'   },
+  '_08_Qi_Xin_Dou':  { zh: '枓',  sub: '散枓'   },
   '_13_San_Dou':     { zh: '枓',  sub: '散枓'   },
   '_14_San_Dou':     { zh: '枓',  sub: '散枓'   },
   '_15_San_Dou':     { zh: '枓',  sub: '散枓'   },
   '_16_San_Dou':     { zh: '枓',  sub: '散枓'   },
-  '_17_Jiao_Hu_Dou': { zh: '枓',  sub: '交互枓' },
-  '_18_Jiao_Hu_Dou': { zh: '枓',  sub: '交互枓' },
+  '_17_Jiao_Hu_Dou': { zh: '枓',  sub: '散枓'   },
+  '_18_Jiao_Hu_Dou': { zh: '枓',  sub: '散枓'   },
   '_19_Qi_Xin_Dou':  { zh: '枓',  sub: '齊心枓' },
   '_20_Qi_Xin_Dou':  { zh: '枓',  sub: '齊心枓' },
   '_02_Ni_Dao_Gong': { zh: '栱',  sub: '泥道栱' },
@@ -158,8 +137,8 @@ const SCATTER_Y_BY_DEF = {
 // ── 模型設定 ──
 const MODEL_CONFIGS = {
   original: {
-    label: 'Palace',
-    url: '05-5-1.x3d',
+    label: 'model4',
+    url: 'model4.x3d',
     scale: '10 10 10',
     translation: BASE_MODEL_TRANSLATION.join(' '),
     enableOriginalTools: true,
@@ -170,7 +149,7 @@ const MODEL_CONFIGS = {
     },
   },
   palace: {
-    label: '05-5-1',
+    label: 'model4',
     url: 'Palace1.x3d',
     scale: '1 1 1',
     translation: '0 0 0',
@@ -182,3 +161,26 @@ const MODEL_CONFIGS = {
     },
   },
 };
+
+Object.assign(window, {
+  BASE_MODEL_SCALE,
+  BASE_MODEL_TRANSLATION,
+  DIMENSION_BASE_Y,
+  DIMENSION_CENTER_X,
+  DIMENSION_CENTER_Z,
+  DIMENSION_ANCHOR_DEF,
+  DIMENSION_ANCHOR_MODE,
+  FEN_PER_MAJOR_UNIT,
+  FEN_DISTANCE_SCALE,
+  X_MAJOR_CELL_FEN_WIDTHS,
+  Z_MAJOR_CELL_FEN_WIDTHS,
+  TYPE_DEFS,
+  ASSEMBLED_POS,
+  DEF_LABELS,
+  LAYER_DEFS,
+  SCATTER_OFFSET,
+  SCATTER_OFFSET_BY_DEF,
+  SCATTER_Y,
+  SCATTER_Y_BY_DEF,
+  MODEL_CONFIGS,
+});

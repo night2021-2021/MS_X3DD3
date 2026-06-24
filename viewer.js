@@ -15,12 +15,15 @@
 
 const targetScene = document.querySelector('scene');
 const DEFAULT_WOOD_COLOR = '0.450 0.280 0.140';
+const AUTO_ROTATE_PERIOD_MS = 12000;
 let activeModelKey = 'palace';
 let modelLoadRequestId = 0;
 let palaceViewCenter = [0, 8, 0];
 let palaceViewDistance = 80;
 let autoRotateId = null;
 let autoRotateStart = null;
+let autoRotateElapsed = 0;
+let autoRotateEnabled = true;
 
 function parseVec3(value) {
   return String(value || '')
@@ -103,9 +106,9 @@ function applyDefaultWoodMaterial(x3dDoc) {
 
     const material = createX3dElement(x3dDoc, appearance, 'Material');
     material.setAttribute('diffuseColor', DEFAULT_WOOD_COLOR);
-    material.setAttribute('ambientIntensity', '0.35');
-    material.setAttribute('specularColor', '0.08 0.05 0.025');
-    material.setAttribute('shininess', '0.18');
+    material.setAttribute('ambientIntensity', '0.000');
+    material.setAttribute('specularColor', '0.401 0.401 0.401');
+    material.setAttribute('shininess', '0.500');
     appearance.insertBefore(material, appearance.firstChild);
   });
 }
@@ -425,22 +428,30 @@ function initCameraAxisWidget() {
   requestAnimationFrame(render);
 }
 
-function stopAutoRotate() {
+function stopAutoRotate({ reset = false } = {}) {
+  if (autoRotateStart !== null && !reset) {
+    autoRotateElapsed = performance.now() - autoRotateStart;
+  }
+
   if (autoRotateId !== null) {
     cancelAnimationFrame(autoRotateId);
     autoRotateId = null;
   }
+
   autoRotateStart = null;
+  if (reset) autoRotateElapsed = 0;
 }
 
 function startAutoRotate() {
   stopAutoRotate();
-  autoRotateStart = performance.now();
+  if (!autoRotateEnabled) return;
+  autoRotateStart = performance.now() - autoRotateElapsed;
 
   function tick(now) {
     const wrapper = document.getElementById('model-wrapper');
     if (!wrapper) { stopAutoRotate(); return; }
-    const angle = ((now - autoRotateStart) / 6000) * (Math.PI * 2);
+    autoRotateElapsed = now - autoRotateStart;
+    const angle = (autoRotateElapsed / AUTO_ROTATE_PERIOD_MS) * (Math.PI * 2);
     const [cx, cy, cz] = palaceViewCenter;
     wrapper.setAttribute('center', `${cx} ${cy} ${cz}`);
     wrapper.setAttribute('rotation', `0 1 0 ${angle}`);
@@ -450,13 +461,41 @@ function startAutoRotate() {
   autoRotateId = requestAnimationFrame(tick);
 }
 
-function loadCollectedModel(filename) {
-  stopAutoRotate();
+function updateAutoRotateToggle() {
+  const button = document.getElementById('auto-rotate-toggle');
+  if (!button) return;
 
-  setActiveModelListItem({ filename });
+  button.textContent = autoRotateEnabled ? 'Ⅱ' : '▶';
+  button.setAttribute('aria-pressed', String(autoRotateEnabled));
+  button.setAttribute('aria-label', autoRotateEnabled ? '暫停自轉' : '播放自轉');
+  button.setAttribute('title', autoRotateEnabled ? '暫停自轉' : '播放自轉');
+}
+
+function setAutoRotateEnabled(enabled) {
+  autoRotateEnabled = enabled;
+  updateAutoRotateToggle();
+
+  if (enabled) startAutoRotate();
+  else stopAutoRotate();
+}
+
+function initAutoRotateToggle() {
+  const button = document.getElementById('auto-rotate-toggle');
+  if (!button) return;
+
+  updateAutoRotateToggle();
+  button.addEventListener('click', () => {
+    setAutoRotateEnabled(!autoRotateEnabled);
+  });
+}
+
+function loadFolderModel(source, folder, filename) {
+  stopAutoRotate({ reset: true });
+
+  setActiveModelListItem({ source, filename });
 
   const requestId = ++modelLoadRequestId;
-  activeModelKey = filename;
+  activeModelKey = `${source}:${filename}`;
   palaceViewCenter = [0, 0, 0];
   palaceViewDistance = 80;
 
@@ -479,7 +518,7 @@ function loadCollectedModel(filename) {
   wrapper.setAttribute('scale', '1 1 1');
   wrapper.setAttribute('translation', '0 0 0');
 
-  const modelUrl = '_x3d_collected/' + filename + '.x3d';
+  const modelUrl = `${folder}/${filename}.x3d`;
 
   fetch(modelUrl)
     .then(response => {
@@ -503,10 +542,14 @@ function loadCollectedModel(filename) {
     })
     .catch(error => {
       if (requestId !== modelLoadRequestId) return;
-      console.error('Collected X3D load failed:', error);
+      console.error('X3D folder model load failed:', error);
       setModelSwitchLoading(false);
       setViewerStatus('載入失敗');
     });
+}
+
+function loadX3dModel(filename) {
+  loadFolderModel('x3d', 'X3D', filename);
 }
 
 function initSidebar() {
@@ -515,26 +558,58 @@ function initSidebar() {
   const sidebar = document.getElementById('model-sidebar');
   if (!list || !toggle || !sidebar) return;
 
-  const palaceConfig = MODEL_CONFIGS?.palace;
-  if (palaceConfig) {
-    const li = document.createElement('li');
-    li.textContent = palaceConfig.url;
-    li.dataset.modelKey = 'palace';
-    li.setAttribute('role', 'option');
-    li.setAttribute('title', palaceConfig.url);
-    li.addEventListener('click', () => loadModel('palace'));
-    list.appendChild(li);
+  function createFolder(label, models, source, onSelect) {
+    const folderItem = document.createElement('li');
+    folderItem.className = 'model-folder';
+
+    const folderButton = document.createElement('button');
+    folderButton.className = 'model-folder-toggle';
+    folderButton.type = 'button';
+    folderButton.setAttribute('aria-expanded', 'true');
+
+    const icon = document.createElement('span');
+    icon.className = 'model-folder-icon';
+    icon.textContent = '▾';
+
+    const text = document.createElement('span');
+    text.textContent = label;
+
+    folderButton.append(icon, text);
+    folderItem.appendChild(folderButton);
+
+    const children = document.createElement('ul');
+    children.className = 'model-folder-children';
+    children.setAttribute('role', 'group');
+
+    models.forEach(filename => {
+      const li = document.createElement('li');
+      li.className = 'model-item';
+      li.dataset.source = source;
+      li.dataset.filename = filename;
+      li.setAttribute('role', 'option');
+
+      const button = document.createElement('button');
+      button.className = 'model-item-button';
+      button.type = 'button';
+      button.textContent = filename;
+      button.setAttribute('title', `${label}/${filename}.x3d`);
+      button.addEventListener('click', () => onSelect(filename));
+
+      li.appendChild(button);
+      children.appendChild(li);
+    });
+
+    folderButton.addEventListener('click', () => {
+      const collapsed = folderItem.classList.toggle('is-collapsed');
+      folderButton.setAttribute('aria-expanded', String(!collapsed));
+      icon.textContent = collapsed ? '▸' : '▾';
+    });
+
+    folderItem.appendChild(children);
+    list.appendChild(folderItem);
   }
 
-  (typeof COLLECTED_MODELS !== 'undefined' ? COLLECTED_MODELS : []).forEach(filename => {
-    const li = document.createElement('li');
-    li.textContent = filename;
-    li.dataset.filename = filename;
-    li.setAttribute('role', 'option');
-    li.setAttribute('title', filename);
-    li.addEventListener('click', () => loadCollectedModel(filename));
-    list.appendChild(li);
-  });
+  createFolder('X3D', typeof X3D_MODELS !== 'undefined' ? X3D_MODELS : [], 'x3d', loadX3dModel);
 
   toggle.addEventListener('click', () => {
     const isOpen = sidebar.classList.toggle('is-open');
@@ -544,4 +619,5 @@ function initSidebar() {
 }
 
 initCameraAxisWidget();
+initAutoRotateToggle();
 initSidebar();
