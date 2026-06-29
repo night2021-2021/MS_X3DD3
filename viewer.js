@@ -16,6 +16,10 @@
 const targetScene = document.querySelector('scene');
 const DEFAULT_WOOD_COLOR = '0.450 0.280 0.140';
 const AUTO_ROTATE_PERIOD_MS = 12000;
+const INLINE_FOLDER_MODEL_KEYS = new Set(['x3d:Palace1-1']);
+const FOLDER_MODEL_URL_OVERRIDES = {
+  'x3d:Palace1-1': 'X3D/Palace1-1-viewer.x3d',
+};
 let activeModelKey = 'palace';
 let modelLoadRequestId = 0;
 let palaceViewCenter = [0, 8, 0];
@@ -75,6 +79,19 @@ function setModelSwitchLoading(isLoading) {
 
 function reloadX3dom() {
   if (window.x3dom) x3dom.reload();
+}
+
+function parseX3domNode(element) {
+  if (!window.x3dom || !element) return;
+  if (typeof x3dom?.runtime?.load === 'function') {
+    x3dom.runtime.load(element);
+    return;
+  }
+  if (typeof x3dom?.load === 'function') {
+    x3dom.load(element);
+    return;
+  }
+  reloadX3dom();
 }
 
 function localNameEquals(node, name) {
@@ -496,6 +513,7 @@ function loadFolderModel(source, folder, filename) {
 
   const requestId = ++modelLoadRequestId;
   activeModelKey = `${source}:${filename}`;
+  updateUrlModelKey(activeModelKey);
   palaceViewCenter = [0, 0, 0];
   palaceViewDistance = 80;
 
@@ -518,7 +536,31 @@ function loadFolderModel(source, folder, filename) {
   wrapper.setAttribute('scale', '1 1 1');
   wrapper.setAttribute('translation', '0 0 0');
 
-  const modelUrl = `${folder}/${filename}.x3d`;
+  const modelKey = `${source}:${filename}`;
+  const modelUrl = FOLDER_MODEL_URL_OVERRIDES[modelKey] || `${folder}/${filename}.x3d`;
+
+  if (INLINE_FOLDER_MODEL_KEYS.has(modelKey)) {
+    const inline = document.createElement('inline');
+    inline.setAttribute('url', modelUrl);
+
+    const nudgeLoadWatcher = startPalaceLoadWatcher(requestId, startAutoRotate);
+    ['load', 'loaded', 'x3domload'].forEach(eventName => {
+      inline.addEventListener(eventName, () => {
+        window.setTimeout(nudgeLoadWatcher, 500);
+      });
+    });
+    inline.addEventListener('error', error => {
+      if (requestId !== modelLoadRequestId) return;
+      console.error('X3D inline folder model load failed:', error);
+      setModelSwitchLoading(false);
+      setViewerStatus('載入失敗');
+    });
+
+    wrapper.appendChild(inline);
+    targetScene.appendChild(wrapper);
+    parseX3domNode(wrapper);
+    return;
+  }
 
   fetch(modelUrl)
     .then(response => {
@@ -618,6 +660,24 @@ function initSidebar() {
   });
 }
 
+function initRequestedModel() {
+  const params = new URLSearchParams(window.location.search);
+  const requestedModel = params.get('model');
+  if (!requestedModel) return;
+
+  if (requestedModel.startsWith('x3d:')) {
+    const filename = requestedModel.slice(4);
+    if ((typeof X3D_MODELS === 'undefined') || !X3D_MODELS.includes(filename)) return;
+    loadX3dModel(filename);
+    return;
+  }
+
+  if (typeof MODEL_CONFIGS !== 'undefined' && MODEL_CONFIGS[requestedModel]) {
+    loadModel(requestedModel);
+  }
+}
+
 initCameraAxisWidget();
 initAutoRotateToggle();
 initSidebar();
+initRequestedModel();

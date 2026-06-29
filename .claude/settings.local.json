@@ -3,7 +3,8 @@
     "allow": [
       "Bash(python -c \":*)",
       "Bash(python3 -c ' *)",
-      "Bash(sed 's/\\\\.x3d$//')"
+      "Bash(sed 's/\\\\.x3d$//')",
+      "Bash(awk '{ print length\\($0\\)-length\\(\"<Transform\"\\) }')"
     ]
   }
 }

@@ -500,7 +500,7 @@
       color: #e2e8f0;
       padding: 6px 13px;
       border-radius: 7px;
-      border: 1px solid #4a5568;
+      border: 1px solid #ebe0bf;
       font-size: 13px;
       font-family: 'Segoe UI', sans-serif;
       pointer-events: none;
@@ -512,9 +512,37 @@
     #x3d-tooltip .tt-type {
       font-size: 15px;
       font-weight: 600;
-      color: #fbd38d;
+      color: #fff8e8;
     }
     #x3d-tooltip .tt-id {
+      font-size: 11px;
+      color: #a0aec0;
+    }
+    #selected-part-label {
+      display: none;
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 10, 30, 0.9);
+      color: #e2e8f0;
+      padding: 8px 16px;
+      border-radius: 7px;
+      border: 1px solid #fbd38d;
+      font-family: 'Segoe UI', sans-serif;
+      pointer-events: none;
+      z-index: 1001;
+      white-space: nowrap;
+      box-shadow: 0 2px 12px rgba(0,0,0,.55);
+      line-height: 1.45;
+      text-align: center;
+    }
+    #selected-part-label .tt-type {
+      font-size: 15px;
+      font-weight: 600;
+      color: #fbd38d;
+    }
+    #selected-part-label .tt-id {
       font-size: 11px;
       color: #a0aec0;
     }

@@ -1331,6 +1331,8 @@ const ORIG_DIFFUSE = '0.45 0.28 0.14';
 const ORIG_SPEC    = '0.22 0.14 0.07';
 const HI_DIFFUSE   = '1.0 0.55 0.05';
 const HI_EMISSIVE  = '0.35 0.18 0.0';
+const HOVER_DIFFUSE  = '0.92 0.86 0.72';
+const HOVER_EMISSIVE = '0.18 0.15 0.09';
 
 // defName → owned Material elements (USE replaced with real nodes)
 const matMap = {};
@@ -1419,10 +1421,23 @@ function applyMats(name, hi) {
   });
 }
 
+function applyHoverMats(name) {
+  (matMap[name] || []).forEach(mat => {
+    mat.setAttribute('diffuseColor', HOVER_DIFFUSE);
+    mat.setAttribute('emissiveColor', HOVER_EMISSIVE);
+  });
+}
+
 // Restore one defName to its correct state after hover-out
 function restoreMats(name) {
   const inSelected = selectedType && (TYPE_DEFS[selectedType] || []).includes(name);
   applyMats(name, inSelected || selectedMovableName === name);
+}
+
+function getPartInfoHtml(name) {
+  const info = DEF_LABELS[name] || { zh: name, sub: '' };
+  const title = info.sub ? `${info.zh}　${info.sub}` : info.zh;
+  return `<div class="tt-type">${title}</div><div class="tt-id">${name}</div>`;
 }
 
 // ── DEF display names ──
@@ -1435,12 +1450,14 @@ function selectMovablePart(name) {
   hoverName = name;
   selectedMovableName = name;
   applyMats(name, true);
+  updateSelectedPartLabel(name);
 }
 
 function clearMovablePartSelection() {
   if (!selectedMovableName) return;
   const previousName = selectedMovableName;
   selectedMovableName = null;
+  updateSelectedPartLabel(null);
   restoreMats(previousName);
 }
 
@@ -1465,9 +1482,67 @@ function moveSelectedPart(delta) {
 
   transform.setAttribute('translation', nextPosition.map(value => value.toFixed(6)).join(' '));
   _animCur[selectedMovableName] = nextPosition;
+  refreshSelectedPartAfterTransform();
+}
+
+const PART_ROTATION_STEP = Math.PI / 12;
+
+function axisAngleToQuat(rotation) {
+  const [axisX, axisY, axisZ, angle] = rotation;
+  const axisLength = Math.hypot(axisX, axisY, axisZ);
+  if (!axisLength || !angle) return [0, 0, 0, 1];
+
+  const halfAngle = angle / 2;
+  const sinHalf = Math.sin(halfAngle);
+  return [
+    (axisX / axisLength) * sinHalf,
+    (axisY / axisLength) * sinHalf,
+    (axisZ / axisLength) * sinHalf,
+    Math.cos(halfAngle),
+  ];
+}
+
+function quatMultiply(a, b) {
+  return [
+    a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+    a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+    a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+    a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2],
+  ];
+}
+
+function quatToAxisAngle(quat) {
+  const length = Math.hypot(...quat);
+  if (!length) return [0, 0, 1, 0];
+
+  const [x, y, z, w] = quat.map(value => value / length);
+  const clampedW = Math.max(-1, Math.min(1, w));
+  const angle = 2 * Math.acos(clampedW);
+  const sinHalf = Math.sqrt(1 - clampedW * clampedW);
+
+  if (sinHalf < 0.000001 || !angle) return [0, 0, 1, 0];
+  return [x / sinHalf, y / sinHalf, z / sinHalf, angle];
+}
+
+function refreshSelectedPartAfterTransform() {
   if (document.getElementById('ground-projection-copy')) applyGroundProjectionCopySection();
   if (boundingBoxesVisible) renderBoundingBoxes();
   else if (window.x3dom) x3dom.reload();
+}
+
+function rotateSelectedPart(axisIndex, direction) {
+  if (!selectedMovableName) return;
+  const transform = document.querySelector(`[DEF="${selectedMovableName}_TRANSFORM"]`);
+  if (!transform) return;
+
+  const axis = [0, 0, 0];
+  axis[axisIndex] = 1;
+  const currentQuat = axisAngleToQuat(parseRotation(transform.getAttribute('rotation')));
+  const deltaQuat = axisAngleToQuat([...axis, direction * PART_ROTATION_STEP]);
+  const nextRotation = quatToAxisAngle(quatMultiply(deltaQuat, currentQuat));
+
+  transform.setAttribute('rotation', nextRotation.map(value => value.toFixed(6)).join(' '));
+  refreshSelectedPartAfterTransform();
 }
 
 function initMovablePartKeyboard() {
@@ -1481,18 +1556,25 @@ function initMovablePartKeyboard() {
 
     const key = e.key.toLowerCase();
     const deltas = {
-      w: [0, 0, -1],
-      s: [0, 0, 1],
+      w: [0, 1, 0],
+      s: [0, -1, 0],
       a: [-1, 0, 0],
       d: [1, 0, 0],
-      q: [0, -1, 0],
-      e: [0, 1, 0],
+      q: [0, 0, -1],
+      e: [0, 0, 1],
     };
     const delta = deltas[key];
-    if (!delta) return;
+    if (delta) {
+      e.preventDefault();
+      moveSelectedPart(delta);
+      return;
+    }
+
+    const rotationAxis = { x: 0, y: 1, z: 2 }[key];
+    if (rotationAxis === undefined) return;
 
     e.preventDefault();
-    moveSelectedPart(delta);
+    rotateSelectedPart(rotationAxis, e.key === key.toUpperCase() ? 1 : -1);
   });
 }
 
@@ -1503,6 +1585,20 @@ initMovablePartKeyboard();
 const tooltip = document.createElement('div');
 tooltip.id = 'x3d-tooltip';
 document.body.appendChild(tooltip);
+
+const selectedPartLabel = document.createElement('div');
+selectedPartLabel.id = 'selected-part-label';
+(document.getElementById('left-panel') || document.body).appendChild(selectedPartLabel);
+
+function updateSelectedPartLabel(name) {
+  if (!name) {
+    selectedPartLabel.style.display = 'none';
+    selectedPartLabel.innerHTML = '';
+    return;
+  }
+  selectedPartLabel.innerHTML = getPartInfoHtml(name);
+  selectedPartLabel.style.display = 'block';
+}
 
 // Track cursor position (X3DOM mouse events carry clientX/Y)
 document.getElementById('x3d').addEventListener('mousemove', e => {
@@ -1520,12 +1616,9 @@ function initHoverSystem() {
       if (hoverName === name) return;
       if (hoverName) restoreMats(hoverName);   // restore previous hovered obj
       hoverName = name;
-      applyMats(name, true);
+      applyHoverMats(name);
 
-      const info = DEF_LABELS[name] || { zh: name, sub: '' };
-      tooltip.innerHTML =
-        `<div class="tt-type">${info.zh}　${info.sub}</div>` +
-        `<div class="tt-id">${name}</div>`;
+      tooltip.innerHTML = getPartInfoHtml(name);
       tooltip.style.display = 'block';
     });
 
@@ -1926,6 +2019,7 @@ function resetOriginalModelState() {
   hoverName = null;
   assembledModelLocalBottomY = null;
   tooltip.style.display = 'none';
+  updateSelectedPartLabel(null);
   clearDimensionFeatures();
   setBoundingBoxesVisible(false);
   layerNavReady = false;
