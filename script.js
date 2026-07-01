@@ -690,6 +690,7 @@ function createGroundProjection({
   id, planeMaterialId, labelId,
   pickFnName, hoverFnName, unhoverFnName,
   onUpdateY, onRemove, onBuildExtra, onToggleOn,
+  initialY = 0,
 }) {
   let relativeY = 0;
   let selected = false;
@@ -780,7 +781,7 @@ function createGroundProjection({
     const zHalf = Math.max(...zMajorPositions.map(Math.abs));
     const xSize = Math.max(xHalf * 2, step);
     const zSize = Math.max(zHalf * 2, step);
-    relativeY = 0;
+    relativeY = initialY;
     const [anchorX, anchorY, anchorZ] = getDimensionToolOriginPosition();
 
     const group = document.createElement('transform');
@@ -998,6 +999,7 @@ const gpCopy = createGroundProjection({
   onBuildExtra: addSectionVoidToGroup,
   onUpdateY: applyGroundProjectionCopySection,
   onToggleOn: applyGroundProjectionCopySection,
+  initialY: 100 * getAbsoluteDimensionFenSize(),
 });
 gp.setPeer(gpCopy);
 gpCopy.setPeer(gp);
@@ -1177,7 +1179,7 @@ function applyGroundProjectionCopySection() {
   const wrapperScale = parseVec3(modelWrapper.getAttribute('scale') || `${BASE_MODEL_SCALE} ${BASE_MODEL_SCALE} ${BASE_MODEL_SCALE}`);
   const wrapperTranslation = parseVec3(modelWrapper.getAttribute('translation') || BASE_MODEL_TRANSLATION.join(' '));
   const localClipY = (gpCopy.getY() - wrapperTranslation[1]) / wrapperScale[1];
-  clipPlane.setAttribute('plane', `0 1 0 ${-localClipY}`);
+  clipPlane.setAttribute('plane', `0 -1 0 ${localClipY}`);
   if (window.x3dom) x3dom.reload();
 }
 
