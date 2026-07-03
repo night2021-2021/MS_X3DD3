@@ -62,15 +62,28 @@ function getDimensionFenSize() {
   return getDimensionStepSize() / FEN_PER_MAJOR_UNIT;
 }
 
-function getXMajorFenPositions() {
-  const totalFen = X_MAJOR_CELL_FEN_WIDTHS.reduce((sum, width) => sum + width, 0);
+function getCenteredMajorFenPositions(cellWidths, centralCellIndex) {
+  const totalFen = cellWidths.reduce((sum, width) => sum + width, 0);
   const positions = [-totalFen / 2];
 
-  X_MAJOR_CELL_FEN_WIDTHS.forEach(width => {
+  cellWidths.forEach(width => {
     positions.push(positions[positions.length - 1] + width);
   });
 
+  // 寬度陣列頭尾不一定對稱（例如兩側梢間分數不同），中央的格線不一定會剛好落在 0。
+  // centralCellIndex 由各 model-data-*.js 指定「哪一個邊界才是錨點（柱頭鋪作）所在」，
+  // 若沒指定就退回用陣列正中間的索引（僅在偶數個寬度時才有整數中點）。
+  const index = Number.isInteger(centralCellIndex) ? centralCellIndex : cellWidths.length / 2;
+  if (Number.isInteger(index) && positions[index] !== undefined) {
+    const centerOffset = positions[index];
+    return positions.map(value => value - centerOffset);
+  }
+
   return positions;
+}
+
+function getXMajorFenPositions() {
+  return getCenteredMajorFenPositions(X_MAJOR_CELL_FEN_WIDTHS, window.X_CENTRAL_CELL_INDEX);
 }
 
 function getXMajorPositions() {
@@ -79,14 +92,7 @@ function getXMajorPositions() {
 }
 
 function getZMajorFenPositions() {
-  const totalFen = Z_MAJOR_CELL_FEN_WIDTHS.reduce((sum, width) => sum + width, 0);
-  const positions = [-totalFen / 2];
-
-  Z_MAJOR_CELL_FEN_WIDTHS.forEach(width => {
-    positions.push(positions[positions.length - 1] + width);
-  });
-
-  return positions;
+  return getCenteredMajorFenPositions(Z_MAJOR_CELL_FEN_WIDTHS);
 }
 
 function getZMajorPositions() {
@@ -544,7 +550,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
     parent.appendChild(transform);
   }
 
-  function addLayerPlane(parent, axis, value, xSize, zSize, height, color) {
+  function addLayerPlane(parent, axis, value, xSize, zSize, height, color, xCenter = 0, zCenter = 0) {
     const transform = document.createElement('transform');
     const planeShape = document.createElement('shape');
     const plane = document.createElement('box');
@@ -556,7 +562,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
     const halfHeight = height / 2;
 
     if (axis === 'y') {
-      transform.setAttribute('translation', `0 ${value} 0`);
+      transform.setAttribute('translation', `${xCenter} ${value} ${zCenter}`);
       plane.setAttribute('size', `${xSize} 0.018 ${zSize}`);
       coordinate.setAttribute('point', [
         `${-xHalf} 0.02 ${-zHalf}`,
@@ -567,7 +573,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
     }
 
     if (axis === 'x') {
-      transform.setAttribute('translation', `${value} ${halfHeight} 0`);
+      transform.setAttribute('translation', `${value} ${halfHeight} ${zCenter}`);
       plane.setAttribute('size', `0.018 ${height} ${zSize}`);
       coordinate.setAttribute('point', [
         `0.02 ${-halfHeight} ${-zHalf}`,
@@ -578,7 +584,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
     }
 
     if (axis === 'z') {
-      transform.setAttribute('translation', `0 ${halfHeight} ${value}`);
+      transform.setAttribute('translation', `${xCenter} ${halfHeight} ${value}`);
       plane.setAttribute('size', `${xSize} ${height} 0.018`);
       coordinate.setAttribute('point', [
         `${-xHalf} ${-halfHeight} 0.02`,
@@ -610,21 +616,30 @@ function buildAxisMarkers(id, includeYPlanes = false) {
   const xMajorFenPositions = getXMajorFenPositions();
   const xMajorFenSet = new Set(xMajorFenPositions);
   const xMajorPositions = getXMajorPositions();
-  const xHalf = Math.max(...xMajorPositions.map(Math.abs));
-  const xLength = xHalf * 2;
+  // 錨點不一定是整段量測範圍的正中央（見 X_CENTRAL_CELL_INDEX），
+  // 所以外框/平面要用實際的 min~max 範圍置中，不能假設對稱於 0，
+  // 否則較短的那一側會多出一截空白格。
+  const xMin = Math.min(...xMajorPositions);
+  const xMax = Math.max(...xMajorPositions);
+  const xCenter = (xMin + xMax) / 2;
+  const xLength = xMax - xMin;
+  const xHalf = Math.max(Math.abs(xMin), Math.abs(xMax));
   const zMajorFenPositions = getZMajorFenPositions();
   const zMajorFenSet = new Set(zMajorFenPositions);
   const zMajorPositions = getZMajorPositions();
-  const zHalf = Math.max(...zMajorPositions.map(Math.abs));
-  const zLength = zHalf * 2;
+  const zMin = Math.min(...zMajorPositions);
+  const zMax = Math.max(...zMajorPositions);
+  const zCenter = (zMin + zMax) / 2;
+  const zLength = zMax - zMin;
+  const zHalf = Math.max(Math.abs(zMin), Math.abs(zMax));
   const planeHeight = length;
   const red = '0.9 0.05 0.05';
   const green = '0.05 0.7 0.15';
   const blue = '0.05 0.25 0.95';
 
-  addCylinder(group, '0 0 0', '0 0 1 1.5708', Math.max(xLength, step), red);
+  addCylinder(group, `${xCenter} 0 0`, '0 0 1 1.5708', Math.max(xLength, step), red);
   addCylinder(group, `0 ${half} 0`, null, length, green);
-  addCylinder(group, '0 0 0', '1 0 0 1.5708', Math.max(zLength, step), blue);
+  addCylinder(group, `0 0 ${zCenter}`, '1 0 0 1.5708', Math.max(zLength, step), blue);
 
   const xLabelOffset = zHalf + 0.72;
   const zLabelOffset = xHalf + 0.72;
@@ -633,14 +648,14 @@ function buildAxisMarkers(id, includeYPlanes = false) {
     addSphere(group, `${value} 0 0`, red);
     addAxisLabel(group, Math.abs(xMajorFenPositions[index]), `${value} 0 ${xLabelOffset}`, red);
     if (includeYPlanes) {
-      addLayerPlane(group, 'x', value, xLength, zLength, planeHeight, red);
+      addLayerPlane(group, 'x', value, xLength, zLength, planeHeight, red, xCenter, zCenter);
     }
   });
 
   zMajorPositions.forEach((value, index) => {
     addSphere(group, `0 0 ${value}`, blue);
     addAxisLabel(group, Math.abs(zMajorFenPositions[index]), `${zLabelOffset} 0 ${value}`, blue);
-    if (includeYPlanes) addLayerPlane(group, 'z', value, xLength, zLength, planeHeight, blue);
+    if (includeYPlanes) addLayerPlane(group, 'z', value, xLength, zLength, planeHeight, blue, xCenter, zCenter);
   });
 
   const measurementFenSize = getDimensionFenSize();
@@ -657,7 +672,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
   yNodeValues.forEach((value, index) => {
     addSphere(group, `0 ${value} 0`, green);
     addAxisLabel(group, yNodeFenValues[index], `${xHalf + 0.72} ${value} ${zHalf + 0.72}`, green, '0 1 0 0');
-    if (includeYPlanes) addLayerPlane(group, 'y', value, xLength, zLength, planeHeight, green);
+    if (includeYPlanes) addLayerPlane(group, 'y', value, xLength, zLength, planeHeight, green, xCenter, zCenter);
   });
 
   scene.appendChild(group);
@@ -1242,7 +1257,11 @@ function _animateTo(defName, target, duration = 1400) {
     tr.setAttribute('translation', pos.map(v => v.toFixed(6)).join(' '));
     _animCur[defName] = pos;
     applyGroundProjectionCopySection();
-    if (p < 1) _animRaf[defName] = requestAnimationFrame(step);
+    if (p < 1) {
+      _animRaf[defName] = requestAnimationFrame(step);
+    } else if (defName === DIMENSION_ANCHOR_DEF) {
+      refreshActiveDimensionFeature();
+    }
   }
   _animRaf[defName] = requestAnimationFrame(step);
 }
@@ -1530,6 +1549,7 @@ function refreshSelectedPartAfterTransform() {
   if (document.getElementById('ground-projection-copy')) applyGroundProjectionCopySection();
   if (boundingBoxesVisible) renderBoundingBoxes();
   else if (window.x3dom) x3dom.reload();
+  if (selectedMovableName === DIMENSION_ANCHOR_DEF) refreshActiveDimensionFeature();
 }
 
 function rotateSelectedPart(axisIndex, direction) {
