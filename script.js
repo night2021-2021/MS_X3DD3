@@ -272,7 +272,7 @@ function refreshActiveDimensionFeature() {
   const down = document.getElementById('model-data-down');
   if (!wheel || !value || !up || !down) return;
 
-  const options = ['4', '5'];
+  const options = ['4', '5', '6'];
   const selected = options.includes(window.SELECTED_MODEL_DATA) ? window.SELECTED_MODEL_DATA : '4';
   let selectedIndex = options.indexOf(selected);
   let isChanging = false;
@@ -2109,7 +2109,7 @@ function initModelSwitchToggle() {
   button.addEventListener('click', () => {
     const url = new URL('viewer.html', window.location.href);
     url.searchParams.set('model', 'palace');
-    url.searchParams.set('modelData', window.SELECTED_MODEL_DATA === '5' ? '5' : '4');
+    url.searchParams.set('modelData', ['4', '5', '6'].includes(window.SELECTED_MODEL_DATA) ? window.SELECTED_MODEL_DATA : '4');
     window.open(url.toString(), '_blank', 'noopener');
   });
 }

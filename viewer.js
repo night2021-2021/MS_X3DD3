@@ -594,6 +594,10 @@ function loadX3dModel(filename) {
   loadFolderModel('x3d', 'X3D', filename);
 }
 
+function loadPalaceViewModel(filename) {
+  loadFolderModel('palace-view', 'X3D', filename);
+}
+
 function initSidebar() {
   const list = document.getElementById('model-list');
   const toggle = document.getElementById('sidebar-toggle');
@@ -651,6 +655,7 @@ function initSidebar() {
     list.appendChild(folderItem);
   }
 
+  createFolder('Palace View', typeof PALACE_VIEW_MODELS !== 'undefined' ? PALACE_VIEW_MODELS : [], 'palace-view', loadPalaceViewModel);
   createFolder('X3D', typeof X3D_MODELS !== 'undefined' ? X3D_MODELS : [], 'x3d', loadX3dModel);
 
   toggle.addEventListener('click', () => {
@@ -669,6 +674,13 @@ function initRequestedModel() {
     const filename = requestedModel.slice(4);
     if ((typeof X3D_MODELS === 'undefined') || !X3D_MODELS.includes(filename)) return;
     loadX3dModel(filename);
+    return;
+  }
+
+  if (requestedModel.startsWith('palace-view:')) {
+    const filename = requestedModel.slice(12);
+    if ((typeof PALACE_VIEW_MODELS === 'undefined') || !PALACE_VIEW_MODELS.includes(filename)) return;
+    loadPalaceViewModel(filename);
     return;
   }
 

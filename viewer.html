@@ -348,7 +348,8 @@
   <script>
     (function bootstrapSelectedModel() {
       const params = new URLSearchParams(window.location.search);
-      const selected = params.get('modelData') === '5' ? '5' : '4';
+      const requested = params.get('modelData');
+      const selected = ['4', '5', '6'].includes(requested) ? requested : '4';
       window.SELECTED_MODEL_DATA = selected;
 
       function loadScript(src, onload) {

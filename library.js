@@ -1,5 +1,8 @@
-const X3D_MODELS = [
+const PALACE_VIEW_MODELS = [
   '001',
+];
+
+const X3D_MODELS = [
   '01-1 材',
   '01-2 枓栱部份名稱圖',
   '02-1 華栱 兩卷頭',
