@@ -161,6 +161,68 @@
       outline-offset: 3px;
     }
 
+    #reference-image-toggle {
+      position: absolute;
+      top: 58px;
+      right: 12px;
+      z-index: 10;
+      width: 38px;
+      height: 38px;
+      display: none;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      border-radius: 50%;
+      background: rgba(18, 22, 34, 0.78);
+      color: #f7fafc;
+      font: 800 15px/1 "Segoe UI", sans-serif;
+      cursor: pointer;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.32);
+      transition: background 0.14s ease, transform 0.14s ease;
+    }
+
+    #reference-image-toggle.is-visible {
+      display: grid;
+    }
+
+    #reference-image-toggle:hover {
+      background: rgba(45, 55, 72, 0.92);
+      transform: translateY(-1px);
+    }
+
+    #reference-image-toggle[aria-pressed="true"] {
+      background: rgba(49, 130, 206, 0.85);
+      border-color: #63b3ed;
+    }
+
+    #reference-image-toggle:focus-visible {
+      outline: 2px solid #fff;
+      outline-offset: 3px;
+    }
+
+    #reference-z-slider {
+      position: absolute;
+      top: 104px;
+      right: 12px;
+      z-index: 10;
+      display: none;
+      width: 24px;
+      height: 120px;
+      margin: 0;
+      -webkit-appearance: slider-vertical;
+      appearance: slider-vertical;
+      writing-mode: vertical-lr;
+      direction: rtl;
+      accent-color: #3182ce;
+      background: rgba(18, 22, 34, 0.55);
+      border-radius: 12px;
+      padding: 8px 0;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.32);
+    }
+
+    #reference-z-slider.is-visible {
+      display: block;
+    }
+
     /* ── Sidebar ── */
     #model-sidebar {
       position: fixed;
@@ -325,6 +387,8 @@
 
     <div id="viewer-status" role="status"></div>
     <button id="auto-rotate-toggle" type="button" aria-label="暫停自轉" aria-pressed="true">Ⅱ</button>
+    <button id="reference-image-toggle" type="button" aria-label="顯示參考圖片" aria-pressed="false">▧</button>
+    <input id="reference-z-slider" type="range" min="0" max="100" value="100" step="1" aria-label="參考圖片 Z 軸位置" />
 
     <x3d id="x3d" showStat="false" showLog="false">
       <param name="PrimitiveQuality" value="low"></param>

@@ -2139,10 +2139,6 @@ initModelSwitchToggle();
 // Fetch X3D, inject into DOM so querySelector works, then init highlight
 const targetScene = document.querySelector('scene');
 loadModel(activeModelKey);
-
-      // 初始：所有構件散落
-
-
 /* ─────────────────────────────────────────
    Resizable split
 ───────────────────────────────────────── */

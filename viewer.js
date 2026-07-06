@@ -28,6 +28,13 @@ let autoRotateId = null;
 let autoRotateStart = null;
 let autoRotateElapsed = 0;
 let autoRotateEnabled = true;
+let referenceImageEnabled = false;
+let referenceImageZPercent = 100;
+const REFERENCE_IMAGE_GROUP_ID = 'facade-reference-image';
+const REFERENCE_IMAGE_MODEL_KEY = 'palace-view:001';
+const REFERENCE_IMAGE_URL = '3-6.png';
+const REFERENCE_IMAGE_ASPECT_RATIO = 1457 / 768;
+const REFERENCE_IMAGE_Z_MARGIN_RATIO = 0.05;
 
 function parseVec3(value) {
   return String(value || '')
@@ -192,6 +199,107 @@ function getModelWrapperBounds() {
   return bounds;
 }
 
+function removeFacadeReferenceImage() {
+  const existing = document.getElementById(REFERENCE_IMAGE_GROUP_ID);
+  if (existing) existing.remove();
+}
+
+function getReferenceImagePlacement(wrapper, bounds) {
+  const wrapperScale = parseVec3(wrapper.getAttribute('scale') || '1 1 1');
+  const wrapperTranslation = parseVec3(wrapper.getAttribute('translation') || '0 0 0');
+  const toLocal = (axis, worldValue) => {
+    const scale = wrapperScale[axis] || 1;
+    return (worldValue - wrapperTranslation[axis]) / scale;
+  };
+
+  const xMin = toLocal(0, bounds.min[0]);
+  const xMax = toLocal(0, bounds.max[0]);
+  const yMin = toLocal(1, bounds.min[1]);
+  const yMax = toLocal(1, bounds.max[1]);
+
+  const widthLimit = Math.max(xMax - xMin, 0.0001);
+  const heightLimit = Math.max(yMax - yMin, 0.0001);
+  let width = widthLimit;
+  let height = width / REFERENCE_IMAGE_ASPECT_RATIO;
+
+  if (height > heightLimit) {
+    height = heightLimit;
+    width = height * REFERENCE_IMAGE_ASPECT_RATIO;
+  }
+
+  const zDepthWorld = bounds.max[2] - bounds.min[2];
+  const zMarginWorld = Math.max(zDepthWorld * REFERENCE_IMAGE_Z_MARGIN_RATIO, 0.0001);
+  const zMinWorld = bounds.min[2] - zMarginWorld;
+  const zMaxWorld = bounds.max[2] + zMarginWorld;
+  const zRatio = Math.min(100, Math.max(0, referenceImageZPercent)) / 100;
+  const zWorld = zMinWorld + (zMaxWorld - zMinWorld) * zRatio;
+
+  return {
+    centerX: (xMin + xMax) / 2,
+    centerY: (yMin + yMax) / 2,
+    centerZ: toLocal(2, zWorld),
+    width,
+    height,
+  };
+}
+
+function buildFacadeReferenceImage() {
+  removeFacadeReferenceImage();
+  if (!referenceImageEnabled) return;
+
+  const wrapper = document.getElementById('model-wrapper');
+  if (!wrapper) return;
+
+  const bounds = getModelWrapperBounds();
+  if (!bounds) return;
+
+  const placement = getReferenceImagePlacement(wrapper, bounds);
+  const halfWidth = placement.width / 2;
+  const halfHeight = placement.height / 2;
+  const x0 = placement.centerX - halfWidth;
+  const x1 = placement.centerX + halfWidth;
+  const y0 = placement.centerY - halfHeight;
+  const y1 = placement.centerY + halfHeight;
+  const z = placement.centerZ;
+
+  const group = document.createElement('transform');
+  group.id = REFERENCE_IMAGE_GROUP_ID;
+  group.setAttribute('render', 'true');
+
+  const shape = document.createElement('shape');
+  const appearance = document.createElement('appearance');
+  const material = document.createElement('material');
+  material.setAttribute('diffuseColor', '1 1 1');
+  material.setAttribute('emissiveColor', '1 1 1');
+  material.setAttribute('transparency', '0.08');
+
+  const texture = document.createElement('imageTexture');
+  texture.setAttribute('url', `"${REFERENCE_IMAGE_URL}"`);
+
+  const face = document.createElement('indexedFaceSet');
+  face.setAttribute('solid', 'false');
+  face.setAttribute('coordIndex', '0 1 2 3 -1');
+  face.setAttribute('texCoordIndex', '0 1 2 3 -1');
+
+  const coordinate = document.createElement('coordinate');
+  coordinate.setAttribute('point', `${x0} ${y0} ${z} ${x1} ${y0} ${z} ${x1} ${y1} ${z} ${x0} ${y1} ${z}`);
+
+  const texCoord = document.createElement('textureCoordinate');
+  texCoord.setAttribute('point', '0 0 1 0 1 1 0 1');
+
+  appearance.append(material, texture);
+  face.append(coordinate, texCoord);
+  shape.append(appearance, face);
+  group.appendChild(shape);
+  wrapper.appendChild(group);
+  parseX3domNode(group);
+}
+
+function refreshFacadeReferenceImage() {
+  if (!referenceImageEnabled) return;
+  buildFacadeReferenceImage();
+}
+
 function updatePalaceViewFromBounds() {
   const bounds = getModelWrapperBounds();
   if (!bounds) return false;
@@ -234,6 +342,7 @@ function startPalaceLoadWatcher(requestId, onFinish) {
     finished = true;
     if (tickTimer !== null) window.clearTimeout(tickTimer);
     applyPalaceFrontView();
+    refreshFacadeReferenceImage();
     setModelSwitchLoading(false);
     setViewerStatus('');
     if (typeof onFinish === 'function') onFinish();
@@ -276,6 +385,7 @@ function loadModel(modelKey) {
 
   const requestId = ++modelLoadRequestId;
   activeModelKey = modelKey;
+  updateReferenceImageAvailability();
   updateUrlModelKey(modelKey);
   setActiveModelListItem({ modelKey });
   applyViewpointConfig(config);
@@ -513,6 +623,7 @@ function loadFolderModel(source, folder, filename) {
 
   const requestId = ++modelLoadRequestId;
   activeModelKey = `${source}:${filename}`;
+  updateReferenceImageAvailability();
   updateUrlModelKey(activeModelKey);
   palaceViewCenter = [0, 0, 0];
   palaceViewDistance = 80;
@@ -596,6 +707,59 @@ function loadX3dModel(filename) {
 
 function loadPalaceViewModel(filename) {
   loadFolderModel('palace-view', 'X3D', filename);
+}
+
+function updateReferenceImageToggle() {
+  const button = document.getElementById('reference-image-toggle');
+  if (!button) return;
+
+  button.setAttribute('aria-pressed', String(referenceImageEnabled));
+  const label = referenceImageEnabled ? 'Hide reference image' : 'Show reference image';
+  button.setAttribute('aria-label', label);
+  button.setAttribute('title', label);
+
+  const slider = document.getElementById('reference-z-slider');
+  if (slider) slider.classList.toggle('is-visible', referenceImageEnabled);
+}
+
+function isReferenceImageModelActive() {
+  return activeModelKey === REFERENCE_IMAGE_MODEL_KEY;
+}
+
+function updateReferenceImageAvailability() {
+  const button = document.getElementById('reference-image-toggle');
+  const available = isReferenceImageModelActive();
+  if (button) button.classList.toggle('is-visible', available);
+
+  if (!available && referenceImageEnabled) {
+    referenceImageEnabled = false;
+    removeFacadeReferenceImage();
+  }
+
+  updateReferenceImageToggle();
+}
+
+function initReferenceImageToggle() {
+  const button = document.getElementById('reference-image-toggle');
+  const slider = document.getElementById('reference-z-slider');
+  if (!button) return;
+
+  updateReferenceImageAvailability();
+  button.addEventListener('click', () => {
+    referenceImageEnabled = !referenceImageEnabled;
+    if (referenceImageEnabled && slider) {
+      referenceImageZPercent = Number(slider.value);
+    }
+    updateReferenceImageToggle();
+    buildFacadeReferenceImage();
+  });
+
+  if (slider) {
+    slider.addEventListener('input', () => {
+      referenceImageZPercent = Number(slider.value);
+      buildFacadeReferenceImage();
+    });
+  }
 }
 
 function initSidebar() {
@@ -691,5 +855,6 @@ function initRequestedModel() {
 
 initCameraAxisWidget();
 initAutoRotateToggle();
+initReferenceImageToggle();
 initSidebar();
 initRequestedModel();
