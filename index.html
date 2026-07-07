@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title id="page-title"></title>
+
+  <link rel="stylesheet" href="https://www.x3dom.org/release/x3dom.css">
+  <script src="https://www.x3dom.org/release/x3dom.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      display: flex;
+      flex-direction: column;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f4f6;
+    }
+
+    #site-header {
+      flex: none;
+      height: 14vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #c6c6cc, #f4f4f6);
+      font-size: clamp(20px, 3vw, 34px);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #222;
+    }
+
+    main {
+      flex: 1;
+      position: relative;
+      min-height: 0;
+    }
+
+    #showcase {
+      position: absolute;
+      inset: 0;
+    }
+
+    #showcase x3d {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* hide x3dom's built-in overlay UI so it reads as a clean showcase */
+    #showcase .x3dom-navi, #showcase .x3dom-progress, #showcase .x3dom-logContainer {
+      display: none !important;
+    }
+
+    #links {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 6%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 4%;
+      pointer-events: none;
+    }
+
+    .home-link {
+      pointer-events: auto;
+      width: 22%;
+      aspect-ratio: 373 / 196;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      text-decoration: none;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .home-link:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .home-link:focus-visible {
+      outline: 3px solid #63b3ed;
+      outline-offset: 3px;
+    }
+
+    .home-link img {
+      max-width: 100%;
+      max-height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="site-header"></div>
+  <main>
+    <div id="showcase">
+      <x3d>
+        <scene>
+          <navigationInfo type="NONE" headlight="true"></navigationInfo>
+          <viewpoint position="0 0 12" orientation="0 0 0 0" fieldOfView="0.7"></viewpoint>
+          <background skyColor="0.96 0.96 0.96"></background>
+
+          <transform id="palace-spin" scale="0.3 0.3 0.3">
+            <transform id="palace-model"></transform>
+          </transform>
+
+          <!-- ponytail: rotation is declarative X3D (TimeSensor + OrientationInterpolator), no JS loop needed.
+               Spins clockwise (viewed from +Z); flip key values to reverse direction. -->
+          <timeSensor id="spin-clock" cycleInterval="32" loop="true"></timeSensor>
+          <OrientationInterpolator id="spin-orientation"
+            key="0 0.25 0.5 0.75 1"
+            keyValue="0 1 0 0, 0 1 0 -1.5708, 0 1 0 -3.1416, 0 1 0 -4.7124, 0 1 0 -6.2832">
+          </OrientationInterpolator>
+          <ROUTE fromnode="spin-clock" fromfield="fraction_changed" tonode="spin-orientation" tofield="set_fraction"></ROUTE>
+          <ROUTE fromnode="spin-orientation" fromfield="value_changed" tonode="palace-spin" tofield="set_rotation"></ROUTE>
+        </scene>
+      </x3d>
+    </div>
+    <div id="links">
+      <a class="home-link" href="chaiqi.html" aria-label="柴柵模型"></a>
+      <a class="home-link" href="viewer.html" aria-label="Viewer"></a>
+      <a class="home-link" href="#" aria-label="敬請期待"></a>
+    </div>
+  </main>
+
+  <script>
+    // 改網站名稱只需改這裡
+    const SITE_NAME = '網站名稱';
+
+    document.getElementById('page-title').textContent = SITE_NAME;
+    document.getElementById('site-header').textContent = SITE_NAME;
+
+    // 木頭色與 viewer.js 的 DEFAULT_WOOD_COLOR 一致
+    const WOOD_COLOR = '0.450 0.280 0.140';
+
+    const PALACE_MODEL_URL = 'X3D/Palace1-1-viewer.x3d';
+
+    function localNameEquals(node, name) {
+      return node?.localName?.toLowerCase() === name;
+    }
+
+    function childByLocalName(node, name) {
+      return Array.from(node?.children || []).find(child => localNameEquals(child, name));
+    }
+
+    function createX3dElement(doc, sourceNode, tagName) {
+      return sourceNode?.namespaceURI
+        ? doc.createElementNS(sourceNode.namespaceURI, tagName)
+        : doc.createElement(tagName);
+    }
+
+    function applyWoodMaterials(x3dDoc) {
+      const shapes = Array.from(x3dDoc.getElementsByTagName('*'))
+        .filter(node => localNameEquals(node, 'shape'));
+
+      shapes.forEach(shape => {
+        let appearance = childByLocalName(shape, 'appearance');
+
+        if (!appearance) {
+          appearance = createX3dElement(x3dDoc, shape, 'Appearance');
+          shape.insertBefore(appearance, shape.firstChild);
+        }
+
+        let material = childByLocalName(appearance, 'material');
+
+        if (!material) {
+          material = createX3dElement(x3dDoc, appearance, 'Material');
+          appearance.insertBefore(material, appearance.firstChild);
+        }
+
+        material.setAttribute('diffuseColor', WOOD_COLOR);
+        material.setAttribute('ambientIntensity', '0.000');
+        material.setAttribute('specularColor', '0.401 0.401 0.401');
+        material.setAttribute('shininess', '0.500');
+      });
+    }
+
+    function importX3dSceneChildren(x3dDoc, wrapper) {
+      const srcScene = Array.from(x3dDoc.getElementsByTagName('*'))
+        .find(node => localNameEquals(node, 'scene'));
+      if (!srcScene) throw new Error('X3D has no Scene element');
+
+      Array.from(srcScene.children).forEach(child => {
+        if (['navigationinfo', 'background', 'viewpoint'].includes(child.localName.toLowerCase())) return;
+        wrapper.appendChild(document.importNode(child, true));
+      });
+    }
+
+    function reloadX3dom() {
+      if (window.x3dom) x3dom.reload();
+    }
+
+    async function loadPalaceModel() {
+      const wrapper = document.getElementById('palace-model');
+      if (!wrapper) return;
+
+      const response = await fetch(PALACE_MODEL_URL);
+      if (!response.ok) throw new Error(`${PALACE_MODEL_URL} returned ${response.status}`);
+
+      const x3dDoc = new DOMParser().parseFromString(await response.text(), 'application/xml');
+      if (x3dDoc.querySelector('parsererror')) throw new Error(`${PALACE_MODEL_URL} could not be parsed`);
+
+      applyWoodMaterials(x3dDoc);
+      importX3dSceneChildren(x3dDoc, wrapper);
+      reloadX3dom();
+    }
+
+    // ponytail: the Palace1-1-viewer.x3d file is 50MB+, so its bounding volume
+    // isn't ready right when 'load' fires. viewer.js already solves this for the
+    // same file by polling getVolume() every 500ms (up to 16s) — same approach here.
+    function setupPalaceShowcase() {
+      const transform = document.getElementById('palace-spin');
+      const modelTransform = document.getElementById('palace-model');
+      let centered = false;
+
+      function centerRotationOnModel() {
+        if (centered) return true;
+        const volume = modelTransform._x3domNode?.getVolume?.();
+        if (!volume || !volume.isValid?.()) return false;
+        const min = new x3dom.fields.SFVec3f(0, 0, 0);
+        const max = new x3dom.fields.SFVec3f(0, 0, 0);
+        volume.getBounds(min, max);
+        const centerX = (min.x + max.x) / 2;
+        const centerY = (min.y + max.y) / 2;
+        const centerZ = (min.z + max.z) / 2;
+        const height = max.y - min.y;
+        modelTransform.setAttribute('translation', `${-centerX} ${-centerY + height * 0.25} ${-centerZ}`);
+        transform.setAttribute('center', '0 0 0');
+        centered = true;
+        return true;
+      }
+
+      const startedAt = performance.now();
+      (function poll() {
+        const centerDone = centerRotationOnModel();
+        if (centerDone || performance.now() - startedAt > 16000) return;
+        window.setTimeout(poll, 500);
+      })();
+    }
+
+    loadPalaceModel()
+      .then(setupPalaceShowcase)
+      .catch(error => {
+        console.error('Home palace load failed:', error);
+
+        const wrapper = document.getElementById('palace-model');
+        if (!wrapper) return;
+        const inline = document.createElement('inline');
+        inline.setAttribute('url', PALACE_MODEL_URL);
+        wrapper.appendChild(inline);
+        reloadX3dom();
+        setupPalaceShowcase();
+      });
+  </script>
+</body>
+</html>
