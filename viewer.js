@@ -30,10 +30,13 @@ let autoRotateElapsed = 0;
 let autoRotateEnabled = true;
 let referenceImageEnabled = false;
 let referenceImageZPercent = 100;
+let cachedModelBounds = null;
 const REFERENCE_IMAGE_GROUP_ID = 'facade-reference-image';
 const REFERENCE_IMAGE_MODEL_KEY = 'palace-view:001';
-const REFERENCE_IMAGE_URL = '3-6.png';
+const REFERENCE_IMAGE_URL = '3-6No.png';
 const REFERENCE_IMAGE_ASPECT_RATIO = 1457 / 768;
+const REFERENCE_IMAGE_SCALE = 1.4;
+const REFERENCE_IMAGE_Y_OFFSET = 60;
 const REFERENCE_IMAGE_Z_MARGIN_RATIO = 0.05;
 
 function parseVec3(value) {
@@ -217,15 +220,19 @@ function getReferenceImagePlacement(wrapper, bounds) {
   const yMin = toLocal(1, bounds.min[1]);
   const yMax = toLocal(1, bounds.max[1]);
 
+  const aspectRatio = REFERENCE_IMAGE_ASPECT_RATIO;
   const widthLimit = Math.max(xMax - xMin, 0.0001);
   const heightLimit = Math.max(yMax - yMin, 0.0001);
   let width = widthLimit;
-  let height = width / REFERENCE_IMAGE_ASPECT_RATIO;
+  let height = width / aspectRatio;
 
   if (height > heightLimit) {
     height = heightLimit;
-    width = height * REFERENCE_IMAGE_ASPECT_RATIO;
+    width = height * aspectRatio;
   }
+
+  width *= REFERENCE_IMAGE_SCALE;
+  height *= REFERENCE_IMAGE_SCALE;
 
   const zDepthWorld = bounds.max[2] - bounds.min[2];
   const zMarginWorld = Math.max(zDepthWorld * REFERENCE_IMAGE_Z_MARGIN_RATIO, 0.0001);
@@ -236,7 +243,7 @@ function getReferenceImagePlacement(wrapper, bounds) {
 
   return {
     centerX: (xMin + xMax) / 2,
-    centerY: (yMin + yMax) / 2,
+    centerY: (yMin + yMax) / 2 + REFERENCE_IMAGE_Y_OFFSET,
     centerZ: toLocal(2, zWorld),
     width,
     height,
@@ -250,7 +257,13 @@ function buildFacadeReferenceImage() {
   const wrapper = document.getElementById('model-wrapper');
   if (!wrapper) return;
 
-  const bounds = getModelWrapperBounds();
+  // Use the bounds captured right after the model finished loading, not a
+  // fresh live measurement — the reference plane is itself a child of
+  // #model-wrapper, so once it exists (especially at scale != 1, where it
+  // extends past the model's own extent) a live re-measurement would include
+  // it and feed back into the next size calculation, growing/shrinking it
+  // uncontrollably on every rebuild.
+  const bounds = cachedModelBounds || getModelWrapperBounds();
   if (!bounds) return;
 
   const placement = getReferenceImagePlacement(wrapper, bounds);
@@ -270,7 +283,7 @@ function buildFacadeReferenceImage() {
   const appearance = document.createElement('appearance');
   const material = document.createElement('material');
   material.setAttribute('diffuseColor', '1 1 1');
-  material.setAttribute('emissiveColor', '1 1 1');
+  material.setAttribute('emissiveColor', '0 0 0');
   material.setAttribute('transparency', '0.08');
 
   const texture = document.createElement('imageTexture');
@@ -292,7 +305,9 @@ function buildFacadeReferenceImage() {
   shape.append(appearance, face);
   group.appendChild(shape);
   wrapper.appendChild(group);
-  parseX3domNode(group);
+  // A partial/incremental x3dom load (parseX3domNode) does not reliably bind
+  // a freshly inserted ImageTexture node's GL texture; a full reload does.
+  reloadX3dom();
 }
 
 function refreshFacadeReferenceImage() {
@@ -303,6 +318,8 @@ function refreshFacadeReferenceImage() {
 function updatePalaceViewFromBounds() {
   const bounds = getModelWrapperBounds();
   if (!bounds) return false;
+
+  cachedModelBounds = bounds;
 
   const center = bounds.min.map((value, index) => (value + bounds.max[index]) / 2);
   const size = bounds.max.map((value, index) => Math.max(0, value - bounds.min[index]));
@@ -618,6 +635,7 @@ function initAutoRotateToggle() {
 
 function loadFolderModel(source, folder, filename) {
   stopAutoRotate({ reset: true });
+  cachedModelBounds = null;
 
   setActiveModelListItem({ source, filename });
 
