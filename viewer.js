@@ -30,6 +30,7 @@ let autoRotateElapsed = 0;
 let autoRotateEnabled = true;
 let referenceImageEnabled = Boolean(window.ENABLE_REFERENCE_IMAGE_ON_LOAD);
 let referenceImageZPercent = 100;
+let palaceDimensionsEnabled = Boolean(window.ENABLE_PALACE_DIMENSIONS_ON_LOAD);
 let cachedModelBounds = null;
 const REFERENCE_IMAGE_GROUP_ID = 'facade-reference-image';
 const REFERENCE_IMAGE_MODEL_KEY = 'palace-view:001';
@@ -38,6 +39,16 @@ const REFERENCE_IMAGE_ASPECT_RATIO = 1457 / 768;
 const REFERENCE_IMAGE_SCALE = 1.4;
 const REFERENCE_IMAGE_Y_OFFSET = 60;
 const REFERENCE_IMAGE_Z_MARGIN_RATIO = 0.05;
+const PALACE_DIMENSION_GROUP_ID = 'palace-column-dimensions';
+const PALACE_COLUMN_COUNT = 10;
+const PALACE_DIMENSION_LABEL = '30分';
+const PALACE_DIMENSION_COLOR = '0.9 0.08 0.06';
+const PALACE_COLUMN_GUIDE_COLOR = '0.9 0.08 0.06';
+const PALACE_DIMENSION_WIDTH_RATIO = 0.825;
+const PALACE_DIMENSION_MODEL_PULL_RATIO = 0.035;
+const PALACE_DIMENSION_LINE_FORWARD_RATIO = 0.105;
+const PALACE_DIMENSION_LINE_BACK_RATIO = 0.035;
+const PALACE_DIMENSION_INWARD_EXTENSION_RATIO = 0.035;
 
 function parseVec3(value) {
   return String(value || '')
@@ -315,6 +326,135 @@ function refreshFacadeReferenceImage() {
   buildFacadeReferenceImage();
 }
 
+function removePalaceColumnDimensions() {
+  const existing = document.getElementById(PALACE_DIMENSION_GROUP_ID);
+  if (existing) existing.remove();
+}
+
+function createDimensionLineShape(points, coordIndex, color = PALACE_DIMENSION_COLOR) {
+  const shape = document.createElement('shape');
+  const appearance = document.createElement('appearance');
+  const material = document.createElement('material');
+  material.setAttribute('emissiveColor', color);
+  material.setAttribute('diffuseColor', color);
+
+  const lines = document.createElement('indexedLineSet');
+  lines.setAttribute('coordIndex', coordIndex.join(' '));
+
+  const coordinate = document.createElement('coordinate');
+  coordinate.setAttribute('point', points.map(point => point.join(' ')).join(' '));
+
+  appearance.appendChild(material);
+  lines.appendChild(coordinate);
+  shape.append(appearance, lines);
+  return shape;
+}
+
+function createDimensionText(label, x, y, z, size) {
+  const transform = document.createElement('transform');
+  transform.setAttribute('translation', `${x} ${y} ${z}`);
+
+  const shape = document.createElement('shape');
+  const appearance = document.createElement('appearance');
+  const material = document.createElement('material');
+  material.setAttribute('emissiveColor', PALACE_DIMENSION_COLOR);
+  material.setAttribute('diffuseColor', PALACE_DIMENSION_COLOR);
+
+  const text = document.createElement('text');
+  text.setAttribute('string', `"${label}"`);
+  text.setAttribute('solid', 'false');
+
+  const fontStyle = document.createElement('fontStyle');
+  fontStyle.setAttribute('family', '"SANS"');
+  fontStyle.setAttribute('justify', '"MIDDLE" "MIDDLE"');
+  fontStyle.setAttribute('size', String(size));
+
+  text.appendChild(fontStyle);
+  appearance.appendChild(material);
+  shape.append(appearance, text);
+  transform.appendChild(shape);
+  return transform;
+}
+
+function buildPalaceColumnDimensions() {
+  removePalaceColumnDimensions();
+  if (!palaceDimensionsEnabled) return;
+  if (!isReferenceImageModelActive()) return;
+
+  const wrapper = document.getElementById('model-wrapper');
+  if (!wrapper) return;
+
+  const bounds = cachedModelBounds || getModelWrapperBounds();
+  if (!bounds) return;
+
+  const placement = getReferenceImagePlacement(wrapper, bounds);
+  const fullWidth = Math.max(placement.width, 0.0001);
+  const width = fullWidth * PALACE_DIMENSION_WIDTH_RATIO;
+  const xMin = placement.centerX - width / 2;
+  const xMax = placement.centerX + width / 2;
+  const y = 0;
+  const zPull = Math.max(fullWidth * PALACE_DIMENSION_MODEL_PULL_RATIO, 0.5);
+  const lineForward = Math.max(fullWidth * PALACE_DIMENSION_LINE_FORWARD_RATIO, 1.5);
+  const lineBack = Math.max(fullWidth * PALACE_DIMENSION_LINE_BACK_RATIO, 0.5);
+  const inwardExtension = Math.max(fullWidth * PALACE_DIMENSION_INWARD_EXTENSION_RATIO, 0.5);
+  const baseZStart = placement.centerZ - zPull;
+  const baseZLine = baseZStart + Math.max((bounds.max[2] - bounds.min[2]) * 0.16, fullWidth * 0.08, 1.6);
+  const zStart = baseZStart - lineForward + lineBack - inwardExtension;
+  const zLine = baseZLine - lineForward + lineBack;
+  const tick = Math.max(width * 0.008, 0.18);
+  const textSize = Math.max(width * 0.018, 0.55);
+  const tickLeft = tick * 0.5;
+  const tickRight = tick * 0.5;
+  const textY = y + textSize * 0.75;
+  const textZ = baseZLine + textSize * 1.35;
+  const columnStep = width / Math.max(PALACE_COLUMN_COUNT - 1, 1);
+  const columnXs = Array.from({ length: PALACE_COLUMN_COUNT }, (_, index) => xMin + columnStep * index);
+  const innerColumnXs = columnXs.slice(1, -1);
+
+  if (innerColumnXs.length < 2) return;
+
+  const group = document.createElement('transform');
+  group.id = PALACE_DIMENSION_GROUP_ID;
+
+  const guidePoints = [];
+  const guideCoordIndex = [];
+  const dimensionPoints = [];
+  const dimensionCoordIndex = [];
+  const addLine = (points, coordIndex, start, end) => {
+    const startIndex = points.length;
+    points.push(start, end);
+    coordIndex.push(startIndex, startIndex + 1, -1);
+  };
+
+  innerColumnXs.forEach(x => {
+    addLine(guidePoints, guideCoordIndex, [x, y, zStart], [x, y, zLine]);
+    addLine(dimensionPoints, dimensionCoordIndex, [x - tickLeft, y, zLine], [x + tickRight, y, zLine]);
+  });
+
+  for (let index = 0; index < innerColumnXs.length - 1; index += 1) {
+    const x0 = innerColumnXs[index];
+    const x1 = innerColumnXs[index + 1];
+    addLine(dimensionPoints, dimensionCoordIndex, [x0, y, zLine], [x1, y, zLine]);
+    group.appendChild(createDimensionText(
+      PALACE_DIMENSION_LABEL,
+      (x0 + x1) / 2,
+      textY,
+      textZ,
+      textSize,
+    ));
+  }
+
+  group.appendChild(createDimensionLineShape(guidePoints, guideCoordIndex, PALACE_COLUMN_GUIDE_COLOR));
+  group.appendChild(createDimensionLineShape(dimensionPoints, dimensionCoordIndex));
+  wrapper.appendChild(group);
+  reloadX3dom();
+}
+
+function refreshPalaceColumnDimensions() {
+  if (palaceDimensionsEnabled && isReferenceImageModelActive()) buildPalaceColumnDimensions();
+  else removePalaceColumnDimensions();
+}
+
 function updatePalaceViewFromBounds() {
   const bounds = getModelWrapperBounds();
   if (!bounds) return false;
@@ -360,6 +500,7 @@ function startPalaceLoadWatcher(requestId, onFinish) {
     if (tickTimer !== null) window.clearTimeout(tickTimer);
     applyPalaceFrontView();
     refreshFacadeReferenceImage();
+    refreshPalaceColumnDimensions();
     setModelSwitchLoading(false);
     setViewerStatus('');
     if (typeof onFinish === 'function') onFinish();
@@ -402,6 +543,7 @@ function loadModel(modelKey) {
 
   const requestId = ++modelLoadRequestId;
   activeModelKey = modelKey;
+  removePalaceColumnDimensions();
   updateReferenceImageAvailability();
   updateUrlModelKey(modelKey);
   setActiveModelListItem({ modelKey });
@@ -641,6 +783,7 @@ function loadFolderModel(source, folder, filename) {
 
   const requestId = ++modelLoadRequestId;
   activeModelKey = `${source}:${filename}`;
+  removePalaceColumnDimensions();
   updateReferenceImageAvailability();
   updateUrlModelKey(activeModelKey);
   palaceViewCenter = [0, 0, 0];
@@ -780,6 +923,28 @@ function initReferenceImageToggle() {
   }
 }
 
+function updateDimensionToggle() {
+  const button = document.getElementById('dimension-toggle');
+  if (!button) return;
+
+  button.setAttribute('aria-pressed', String(palaceDimensionsEnabled));
+  const label = palaceDimensionsEnabled ? '隱藏尺寸標註' : '顯示尺寸標註';
+  button.setAttribute('aria-label', label);
+  button.setAttribute('title', label);
+}
+
+function initDimensionToggle() {
+  const button = document.getElementById('dimension-toggle');
+  if (!button) return;
+
+  updateDimensionToggle();
+  button.addEventListener('click', () => {
+    palaceDimensionsEnabled = !palaceDimensionsEnabled;
+    updateDimensionToggle();
+    refreshPalaceColumnDimensions();
+  });
+}
+
 function initSidebar() {
   const list = document.getElementById('model-list');
   const toggle = document.getElementById('sidebar-toggle');
@@ -878,5 +1043,6 @@ function initRequestedModel() {
 initCameraAxisWidget();
 initAutoRotateToggle();
 initReferenceImageToggle();
+initDimensionToggle();
 initSidebar();
 initRequestedModel();

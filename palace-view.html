@@ -130,7 +130,8 @@
     }
 
     #auto-rotate-toggle,
-    #reference-image-toggle {
+    #reference-image-toggle,
+    #dimension-toggle {
       position: absolute;
       right: 12px;
       z-index: 10;
@@ -153,8 +154,12 @@
     }
 
     #reference-image-toggle {
-      top: 58px;
+      top: 104px;
       display: none;
+    }
+
+    #dimension-toggle {
+      top: 58px;
     }
 
     #reference-image-toggle.is-visible {
@@ -162,25 +167,28 @@
     }
 
     #auto-rotate-toggle:hover,
-    #reference-image-toggle:hover {
+    #reference-image-toggle:hover,
+    #dimension-toggle:hover {
       background: rgba(45, 55, 72, 0.92);
       transform: translateY(-1px);
     }
 
-    #reference-image-toggle[aria-pressed="true"] {
+    #reference-image-toggle[aria-pressed="true"],
+    #dimension-toggle[aria-pressed="true"] {
       background: rgba(49, 130, 206, 0.85);
       border-color: #63b3ed;
     }
 
     #auto-rotate-toggle:focus-visible,
-    #reference-image-toggle:focus-visible {
+    #reference-image-toggle:focus-visible,
+    #dimension-toggle:focus-visible {
       outline: 2px solid #fff;
       outline-offset: 3px;
     }
 
     #reference-z-slider {
       position: absolute;
-      top: 104px;
+      top: 150px;
       right: 12px;
       z-index: 10;
       display: none;
@@ -222,6 +230,7 @@
 
     <div id="viewer-status" role="status"></div>
     <button id="auto-rotate-toggle" type="button" aria-label="暫停自轉" aria-pressed="true">Ⅱ</button>
+    <button id="dimension-toggle" type="button" aria-label="隱藏尺寸標註" aria-pressed="true">#</button>
     <button id="reference-image-toggle" type="button" aria-label="顯示輔助圖片" aria-pressed="true">▧</button>
     <input id="reference-z-slider" type="range" min="0" max="100" value="100" step="1" aria-label="輔助圖片 Z 位置" />
 
@@ -240,6 +249,7 @@
     window.DEFAULT_VIEWER_MODEL_KEY = 'palace-view:001';
     window.ALLOW_PALACE_VIEW_MODEL = true;
     window.ENABLE_REFERENCE_IMAGE_ON_LOAD = true;
+    window.ENABLE_PALACE_DIMENSIONS_ON_LOAD = true;
   </script>
   <script src="viewer.js"></script>
 </body>
