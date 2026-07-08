@@ -16,6 +16,8 @@
 const targetScene = document.querySelector('scene');
 const DEFAULT_WOOD_COLOR = '0.450 0.280 0.140';
 const AUTO_ROTATE_PERIOD_MS = 12000;
+const PALACE_VIEW_AUTO_ROTATE_PERIOD_MS = AUTO_ROTATE_PERIOD_MS * 2;
+const PALACE_VIEW_AUTO_ROTATE_DIRECTION = -1;
 const INLINE_FOLDER_MODEL_KEYS = new Set(['x3d:Palace1-1']);
 const FOLDER_MODEL_URL_OVERRIDES = {
   'x3d:Palace1-1': 'X3D/Palace1-1-viewer.x3d',
@@ -737,7 +739,10 @@ function startAutoRotate() {
     const wrapper = document.getElementById('model-wrapper');
     if (!wrapper) { stopAutoRotate(); return; }
     autoRotateElapsed = now - autoRotateStart;
-    const angle = (autoRotateElapsed / AUTO_ROTATE_PERIOD_MS) * (Math.PI * 2);
+    const isPalaceView = activeModelKey === REFERENCE_IMAGE_MODEL_KEY;
+    const rotatePeriod = isPalaceView ? PALACE_VIEW_AUTO_ROTATE_PERIOD_MS : AUTO_ROTATE_PERIOD_MS;
+    const rotateDirection = isPalaceView ? PALACE_VIEW_AUTO_ROTATE_DIRECTION : 1;
+    const angle = (autoRotateElapsed / rotatePeriod) * (Math.PI * 2) * rotateDirection;
     const [cx, cy, cz] = palaceViewCenter;
     wrapper.setAttribute('center', `${cx} ${cy} ${cz}`);
     wrapper.setAttribute('rotation', `0 1 0 ${angle}`);
