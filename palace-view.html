@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>模型瀏覽器</title>
+  <title>大殿模型</title>
 
   <link rel="stylesheet" href="https://www.x3dom.org/release/x3dom.css">
   <script src="https://www.x3dom.org/release/x3dom.js"></script>
@@ -111,18 +111,15 @@
     #viewer-status {
       position: absolute;
       z-index: 8;
+      right: 12px;
+      bottom: 12px;
+      padding: 8px 10px;
       border: 1px solid #4a5568;
       border-radius: 6px;
       background: #2d3748;
       color: #e2e8f0;
       font: 700 13px "Segoe UI", sans-serif;
       box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
-    }
-
-    #viewer-status {
-      right: 12px;
-      bottom: 12px;
-      padding: 8px 10px;
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.16s ease;
@@ -132,9 +129,9 @@
       opacity: 1;
     }
 
-    #auto-rotate-toggle {
+    #auto-rotate-toggle,
+    #reference-image-toggle {
       position: absolute;
-      top: 12px;
       right: 12px;
       z-index: 10;
       width: 38px;
@@ -151,39 +148,20 @@
       transition: background 0.14s ease, transform 0.14s ease;
     }
 
-    #auto-rotate-toggle:hover {
-      background: rgba(45, 55, 72, 0.92);
-      transform: translateY(-1px);
-    }
-
-    #auto-rotate-toggle:focus-visible {
-      outline: 2px solid #fff;
-      outline-offset: 3px;
+    #auto-rotate-toggle {
+      top: 12px;
     }
 
     #reference-image-toggle {
-      position: absolute;
       top: 58px;
-      right: 12px;
-      z-index: 10;
-      width: 38px;
-      height: 38px;
       display: none;
-      place-items: center;
-      border: 1px solid rgba(255, 255, 255, 0.24);
-      border-radius: 50%;
-      background: rgba(18, 22, 34, 0.78);
-      color: #f7fafc;
-      font: 800 15px/1 "Segoe UI", sans-serif;
-      cursor: pointer;
-      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.32);
-      transition: background 0.14s ease, transform 0.14s ease;
     }
 
     #reference-image-toggle.is-visible {
       display: grid;
     }
 
+    #auto-rotate-toggle:hover,
     #reference-image-toggle:hover {
       background: rgba(45, 55, 72, 0.92);
       transform: translateY(-1px);
@@ -194,6 +172,7 @@
       border-color: #63b3ed;
     }
 
+    #auto-rotate-toggle:focus-visible,
     #reference-image-toggle:focus-visible {
       outline: 2px solid #fff;
       outline-offset: 3px;
@@ -222,150 +201,6 @@
     #reference-z-slider.is-visible {
       display: block;
     }
-
-    /* ── Sidebar ── */
-    #model-sidebar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      height: 100%;
-      z-index: 20;
-    }
-
-    #sidebar-panel {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 280px;
-      height: 100%;
-      background: rgba(255, 253, 248, 0.96);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      display: flex;
-      flex-direction: column;
-      transform: translateX(-280px);
-      transition: transform 0.22s cubic-bezier(.4, 0, .2, 1);
-      box-shadow: 4px 0 20px rgba(83, 70, 48, 0.16);
-      border-right: 1px solid #e8dfcf;
-    }
-
-    #model-sidebar.is-open #sidebar-panel {
-      transform: translateX(0);
-    }
-
-    #sidebar-toggle {
-      position: fixed;
-      left: 0;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 22px;
-      height: 64px;
-      background: rgba(255, 253, 248, 0.94);
-      border: 1px solid #e2d8c8;
-      border-left: none;
-      border-radius: 0 6px 6px 0;
-      color: #6f6251;
-      font-size: 15px;
-      line-height: 1;
-      cursor: pointer;
-      transition: left 0.22s cubic-bezier(.4, 0, .2, 1), color 0.12s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-      box-shadow: 2px 0 10px rgba(83, 70, 48, 0.18);
-      z-index: 21;
-    }
-
-    #sidebar-toggle:hover {
-      color: #3b342b;
-      background: rgba(245, 238, 226, 0.98);
-    }
-
-    #model-sidebar.is-open #sidebar-toggle {
-      left: 280px;
-    }
-
-    #sidebar-header {
-      padding: 14px 16px 12px;
-      font: 600 11px/1 "Segoe UI", sans-serif;
-      color: #867764;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      border-bottom: 1px solid #e8dfcf;
-      flex-shrink: 0;
-    }
-
-    #model-list {
-      list-style: none;
-      margin: 0;
-      padding: 4px 0;
-      overflow-y: auto;
-      flex: 1;
-      scrollbar-width: thin;
-      scrollbar-color: #cdbfaa transparent;
-    }
-
-    #model-list::-webkit-scrollbar { width: 4px; }
-    #model-list::-webkit-scrollbar-track { background: transparent; }
-    #model-list::-webkit-scrollbar-thumb { background: #cdbfaa; border-radius: 2px; }
-
-    #model-list li {
-      margin: 0;
-    }
-
-    .model-folder-toggle,
-    .model-item-button {
-      width: 100%;
-      min-height: 28px;
-      padding: 6px 12px 6px 16px;
-      border: 0;
-      background: transparent;
-      font: 12.5px/1.4 "Segoe UI", sans-serif;
-      color: #5f5548;
-      cursor: pointer;
-      text-align: left;
-      transition: background 0.1s, color 0.1s;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .model-folder-toggle {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      color: #3f372e;
-      font-weight: 600;
-    }
-
-    .model-folder-icon {
-      width: 12px;
-      color: #8b7b66;
-      flex: 0 0 auto;
-    }
-
-    .model-item-button {
-      padding-left: 34px;
-      border-left: 3px solid transparent;
-    }
-
-    .model-folder-toggle:hover,
-    .model-item-button:hover {
-      background: rgba(238, 228, 211, 0.74);
-      color: #2f2922;
-    }
-
-    .model-folder.is-collapsed > .model-folder-children {
-      display: none;
-    }
-
-    .model-item.is-active .model-item-button {
-      background: rgba(86, 139, 190, 0.16);
-      color: #275b88;
-      border-left-color: #568bbe;
-      font-weight: 600;
-    }
   </style>
 </head>
 
@@ -387,8 +222,8 @@
 
     <div id="viewer-status" role="status"></div>
     <button id="auto-rotate-toggle" type="button" aria-label="暫停自轉" aria-pressed="true">Ⅱ</button>
-    <button id="reference-image-toggle" type="button" aria-label="顯示參考圖片" aria-pressed="false">▧</button>
-    <input id="reference-z-slider" type="range" min="0" max="100" value="100" step="1" aria-label="參考圖片 Z 軸位置" />
+    <button id="reference-image-toggle" type="button" aria-label="顯示輔助圖片" aria-pressed="true">▧</button>
+    <input id="reference-z-slider" type="range" min="0" max="100" value="100" step="1" aria-label="輔助圖片 Z 位置" />
 
     <x3d id="x3d" showStat="false" showLog="false">
       <param name="PrimitiveQuality" value="low"></param>
@@ -400,33 +235,12 @@
     </x3d>
   </main>
 
-  <aside id="model-sidebar">
-    <div id="sidebar-panel">
-      <div id="sidebar-header">模型選單</div>
-      <ul id="model-list" role="listbox" aria-label="選擇模型"></ul>
-    </div>
-    <button id="sidebar-toggle" type="button" aria-label="展開選單">&#9776;</button>
-  </aside>
-
   <script src="library.js"></script>
   <script>
-    (function bootstrapSelectedModel() {
-      const params = new URLSearchParams(window.location.search);
-      const requested = params.get('modelData');
-      const selected = ['4', '5', '6'].includes(requested) ? requested : '4';
-      window.SELECTED_MODEL_DATA = selected;
-
-      function loadScript(src, onload) {
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = onload;
-        document.body.appendChild(script);
-      }
-
-      loadScript(`model-data-${selected}.js`, () => {
-        loadScript('viewer.js');
-      });
-    })();
+    window.DEFAULT_VIEWER_MODEL_KEY = 'palace-view:001';
+    window.ALLOW_PALACE_VIEW_MODEL = true;
+    window.ENABLE_REFERENCE_IMAGE_ON_LOAD = true;
   </script>
+  <script src="viewer.js"></script>
 </body>
 </html>

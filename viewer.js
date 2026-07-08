@@ -28,12 +28,12 @@ let autoRotateId = null;
 let autoRotateStart = null;
 let autoRotateElapsed = 0;
 let autoRotateEnabled = true;
-let referenceImageEnabled = false;
+let referenceImageEnabled = Boolean(window.ENABLE_REFERENCE_IMAGE_ON_LOAD);
 let referenceImageZPercent = 100;
 let cachedModelBounds = null;
 const REFERENCE_IMAGE_GROUP_ID = 'facade-reference-image';
 const REFERENCE_IMAGE_MODEL_KEY = 'palace-view:001';
-const REFERENCE_IMAGE_URL = '3-6No.png';
+const REFERENCE_IMAGE_URL = 'fig/3-6No.png';
 const REFERENCE_IMAGE_ASPECT_RATIO = 1457 / 768;
 const REFERENCE_IMAGE_SCALE = 1.4;
 const REFERENCE_IMAGE_Y_OFFSET = 60;
@@ -837,7 +837,6 @@ function initSidebar() {
     list.appendChild(folderItem);
   }
 
-  createFolder('Palace View', typeof PALACE_VIEW_MODELS !== 'undefined' ? PALACE_VIEW_MODELS : [], 'palace-view', loadPalaceViewModel);
   createFolder('X3D', typeof X3D_MODELS !== 'undefined' ? X3D_MODELS : [], 'x3d', loadX3dModel);
 
   toggle.addEventListener('click', () => {
@@ -849,8 +848,12 @@ function initSidebar() {
 
 function initRequestedModel() {
   const params = new URLSearchParams(window.location.search);
-  const requestedModel = params.get('model');
+  const requestedModel = params.get('model') || window.DEFAULT_VIEWER_MODEL_KEY;
   if (!requestedModel) return;
+
+  if (requestedModel === REFERENCE_IMAGE_MODEL_KEY && window.ENABLE_REFERENCE_IMAGE_ON_LOAD) {
+    referenceImageEnabled = true;
+  }
 
   if (requestedModel.startsWith('x3d:')) {
     const filename = requestedModel.slice(4);
@@ -860,6 +863,7 @@ function initRequestedModel() {
   }
 
   if (requestedModel.startsWith('palace-view:')) {
+    if (!window.ALLOW_PALACE_VIEW_MODEL) return;
     const filename = requestedModel.slice(12);
     if ((typeof PALACE_VIEW_MODELS === 'undefined') || !PALACE_VIEW_MODELS.includes(filename)) return;
     loadPalaceViewModel(filename);

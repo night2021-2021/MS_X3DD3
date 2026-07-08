@@ -14,32 +14,53 @@
     body {
       display: flex;
       flex-direction: column;
-      font-family: 'Segoe UI', sans-serif;
-      background: #f4f4f6;
+      font-family: "Segoe UI", "Noto Sans TC", sans-serif;
+      background: #fbf8ef;
+      color: #29251f;
     }
 
     #site-header {
       flex: none;
-      height: 14vh;
+      height: 92px;
+      min-height: 76px;
+      padding: 0 clamp(24px, 5vw, 72px);
       display: flex;
       align-items: center;
-      justify-content: center;
-      background: linear-gradient(180deg, #c6c6cc, #f4f4f6);
-      font-size: clamp(20px, 3vw, 34px);
+      justify-content: space-between;
+      background: linear-gradient(180deg, rgba(241, 234, 220, 0.96), rgba(251, 248, 239, 0.84));
+      border-bottom: 1px solid rgba(146, 128, 94, 0.18);
+      font-size: clamp(18px, 2.2vw, 28px);
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: #26221c;
+      position: relative;
+      z-index: 4;
+    }
+
+    #site-header::after {
+      content: "Digital Timber Archive";
+      font-size: 11px;
       font-weight: 700;
-      letter-spacing: 0.04em;
-      color: #222;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #8c7b61;
     }
 
     main {
       flex: 1;
       position: relative;
       min-height: 0;
+      overflow: hidden;
+      isolation: isolate;
+      background:
+        linear-gradient(90deg, rgba(251, 248, 239, 0.92) 0%, rgba(251, 248, 239, 0.62) 38%, rgba(251, 248, 239, 0.12) 68%),
+        repeating-linear-gradient(90deg, rgba(130, 111, 78, 0.05) 0 1px, transparent 1px 96px);
     }
 
     #showcase {
       position: absolute;
-      inset: 0;
+      inset: -2% 0 0 0;
+      z-index: 0;
     }
 
     #showcase x3d {
@@ -53,59 +74,246 @@
       display: none !important;
     }
 
+    #hero-copy {
+      position: absolute;
+      z-index: 2;
+      left: clamp(24px, 6vw, 88px);
+      top: clamp(24px, 8vh, 74px);
+      width: min(440px, calc(100% - 48px));
+      pointer-events: none;
+    }
+
+    #hero-copy .eyebrow {
+      margin: 0 0 14px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #8c7b61;
+    }
+
+    #hero-copy h1 {
+      margin: 0;
+      font-size: clamp(34px, 5.6vw, 74px);
+      line-height: 0.98;
+      font-weight: 850;
+      letter-spacing: 0;
+      color: #27231d;
+    }
+
+    #hero-copy p {
+      width: min(360px, 100%);
+      margin: 20px 0 0;
+      font-size: clamp(14px, 1.5vw, 17px);
+      line-height: 1.8;
+      color: #655947;
+    }
+
+    #hero-copy .rule {
+      width: 88px;
+      height: 2px;
+      margin-top: 24px;
+      background: #b78a48;
+    }
+
     #links {
       position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 6%;
+      z-index: 3;
+      left: clamp(20px, 5vw, 72px);
+      right: clamp(20px, 5vw, 72px);
+      bottom: clamp(22px, 5.8vh, 56px);
       display: flex;
-      justify-content: center;
+      justify-content: flex-end;
       align-items: center;
-      gap: 4%;
+      gap: clamp(14px, 2vw, 24px);
       pointer-events: none;
     }
 
     .home-link {
       pointer-events: auto;
-      width: 22%;
-      aspect-ratio: 373 / 196;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.92);
-      backdrop-filter: blur(2px);
+      width: min(28%, 320px);
+      min-width: 210px;
+      min-height: 132px;
+      padding: 20px 22px;
+      border: 1px solid rgba(154, 133, 96, 0.24);
+      border-radius: 8px;
+      background: rgba(255, 253, 248, 0.86);
+      backdrop-filter: blur(8px);
       display: flex;
-      align-items: center;
-      justify-content: center;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: space-between;
       overflow: hidden;
       text-decoration: none;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      box-shadow: 0 18px 40px rgba(78, 64, 39, 0.14);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+      position: relative;
+    }
+
+    .home-link::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 3px;
+      background: #b78a48;
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.18s ease;
+      z-index: 2;
+    }
+
+    .home-link::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-position: calc(50% + 10px) center;
+      background-repeat: no-repeat;
+      background-size: cover;
+      opacity: 0.5;
+      -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 50%, #000 100%);
+      mask-image: linear-gradient(90deg, transparent 0%, transparent 50%, #000 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .home-link:nth-child(1)::after {
+      background-image: url("fig/chaiqi.png");
+      background-position: calc(50% + 60px) center;
+    }
+
+    .home-link:nth-child(2)::after {
+      background-image: url("fig/viewer.png");
+      background-position: calc(50% + 30px) center;
+    }
+
+    .home-link:nth-child(3)::after {
+      background-image: url("fig/palace-view.png");
     }
 
     .home-link:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.3);
+      transform: translateY(-6px);
+      border-color: rgba(183, 138, 72, 0.56);
+      background: rgba(255, 253, 248, 0.96);
+      box-shadow: 0 24px 54px rgba(78, 64, 39, 0.2);
+    }
+
+    .home-link:hover::before {
+      transform: scaleX(1);
     }
 
     .home-link:focus-visible {
-      outline: 3px solid #63b3ed;
-      outline-offset: 3px;
+      outline: 3px solid #568bbe;
+      outline-offset: 4px;
     }
 
-    .home-link img {
-      max-width: 100%;
-      max-height: 100%;
+    .link-kicker {
+      position: relative;
+      z-index: 1;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #9a8560;
+    }
+
+    .link-title {
+      position: relative;
+      z-index: 1;
+      margin-top: 10px;
+      font-size: clamp(18px, 2vw, 24px);
+      line-height: 1.2;
+      font-weight: 800;
+      color: #29251f;
+      display: block;
+    }
+
+    .link-note {
+      position: relative;
+      z-index: 1;
+      margin-top: 12px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: #70614d;
+      display: block;
+    }
+
+    @media (max-width: 920px) {
+      #site-header {
+        height: 78px;
+      }
+
+      #site-header::after {
+        display: none;
+      }
+
+      #hero-copy {
+        top: 24px;
+      }
+
+      #links {
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .home-link {
+        width: min(100%, 280px);
+        min-width: 0;
+        min-height: 118px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      #site-header {
+        justify-content: center;
+        padding: 0 18px;
+        text-align: center;
+      }
+
+      #hero-copy {
+        left: 20px;
+        top: 18px;
+      }
+
+      #hero-copy p,
+      #hero-copy .rule {
+        display: none;
+      }
+
+      #links {
+        display: grid;
+        grid-template-columns: 1fr;
+        bottom: 16px;
+      }
+
+      .home-link {
+        width: 100%;
+        min-height: 86px;
+        padding: 14px 16px;
+      }
+
+      .link-note {
+        display: none;
+      }
     }
   </style>
 </head>
 <body>
   <div id="site-header"></div>
   <main>
+    <section id="hero-copy" aria-label="首頁介紹">
+      <p class="eyebrow">Timber Structure Study</p>
+      <h1>枓栱與木作</h1>
+      <p>以三維模型理解傳統木構</p>
+      <div class="rule" aria-hidden="true"></div>
+    </section>
     <div id="showcase">
       <x3d>
         <scene>
           <navigationInfo type="NONE" headlight="true"></navigationInfo>
           <viewpoint position="0 0 12" orientation="0 0 0 0" fieldOfView="0.7"></viewpoint>
-          <background skyColor="0.96 0.96 0.96"></background>
+          <background skyColor="0.984 0.973 0.937"></background>
 
           <transform id="palace-spin" scale="0.3 0.3 0.3">
             <transform id="palace-model"></transform>
@@ -124,9 +332,27 @@
       </x3d>
     </div>
     <div id="links">
-      <a class="home-link" href="chaiqi.html" aria-label="柴柵模型"></a>
-      <a class="home-link" href="viewer.html" aria-label="Viewer"></a>
-      <a class="home-link" href="#" aria-label="敬請期待"></a>
+      <a class="home-link" href="chaiqi.html" aria-label="枓栱模型">
+        <span>
+          <span class="link-kicker">Assembly</span>
+          <span class="link-title">枓栱模型</span>
+          <span class="link-note">查看構件拆解、格線與組裝關係</span>
+        </span>
+      </a>
+      <a class="home-link" href="viewer.html" aria-label="構件瀏覽">
+        <span>
+          <span class="link-kicker">Catalogue</span>
+          <span class="link-title">構件瀏覽</span>
+          <span class="link-note">切換不同 X3D 模型並檢視細部</span>
+        </span>
+      </a>
+      <a class="home-link" href="palace-view.html" aria-label="大殿模型">
+        <span>
+          <span class="link-kicker">Facade</span>
+          <span class="link-title">大殿模型</span>
+          <span class="link-note">搭配輔助圖片校對大殿立面</span>
+        </span>
+      </a>
     </div>
   </main>
 
