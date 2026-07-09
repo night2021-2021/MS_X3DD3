@@ -250,6 +250,18 @@
     window.ALLOW_PALACE_VIEW_MODEL = true;
     window.ENABLE_REFERENCE_IMAGE_ON_LOAD = true;
     window.ENABLE_PALACE_DIMENSIONS_ON_LOAD = true;
+
+    const palaceViewFetch = window.fetch.bind(window);
+    window.fetch = (resource, options) => {
+      const url = resource instanceof Request ? resource.url : String(resource);
+      if (url.endsWith('X3D/001.x3d')) {
+        const nextResource = resource instanceof Request
+          ? new Request('001.x3d', resource)
+          : '001.x3d';
+        return palaceViewFetch(nextResource, options);
+      }
+      return palaceViewFetch(resource, options);
+    };
   </script>
   <script src="viewer.js"></script>
 </body>
