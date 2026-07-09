@@ -22,6 +22,25 @@ let dimensionFeatureValue = 2;
 
 let assembledModelLocalBottomY = null;
 
+const MODEL_DATA_LABELS = {
+  '4': '四鋪作外插昂',
+  '5': '五鋪作重栱出單杪下昂',
+  '6': '六鋪作重栱出單杪雙下昂',
+};
+
+function getSelectedModelDataValue(value = window.SELECTED_MODEL_DATA) {
+  const key = String(value || '4');
+  return MODEL_DATA_LABELS[key] ? key : '4';
+}
+
+function updateModelDataLabel(value = window.SELECTED_MODEL_DATA) {
+  const label = document.getElementById('model-data-label');
+  if (!label) return;
+
+  const key = getSelectedModelDataValue(value);
+  label.textContent = MODEL_DATA_LABELS[key];
+}
+
 function createMaterial(color, transparency = '0') {
   const appearance = document.createElement('appearance');
   const material = document.createElement('material');
@@ -221,10 +240,12 @@ function refreshActiveDimensionFeature() {
 (function initFeatureLights() {
   const bar = document.getElementById('model-bottom-bar');
   const lights = document.getElementById('feature-lights');
+  const label = document.getElementById('model-data-label');
   if (!bar || !lights) return;
 
   function setOpen(open) {
     lights.classList.toggle('is-open', open);
+    if (label) label.classList.toggle('is-hidden', open);
     lights.setAttribute('aria-hidden', String(!open));
     bar.setAttribute('aria-expanded', String(open));
   }
@@ -265,10 +286,20 @@ function refreshActiveDimensionFeature() {
     toggleLights(e);
   });
 
+  if (label) {
+    label.addEventListener('click', toggleLights);
+    label.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      toggleLights(e);
+    });
+  }
+
   lights.addEventListener('click', e => e.stopPropagation());
   lights.addEventListener('click', handleFeature);
   lights.addEventListener('keydown', handleFeatureKey);
   document.addEventListener('click', () => setOpen(false));
+  updateModelDataLabel();
 })();
 
 (function initModelDataWheel() {
@@ -287,6 +318,7 @@ function refreshActiveDimensionFeature() {
     const current = options[selectedIndex];
     value.textContent = current;
     wheel.setAttribute('aria-valuenow', current);
+    updateModelDataLabel(current);
   }
 
   function selectByDelta(delta) {
