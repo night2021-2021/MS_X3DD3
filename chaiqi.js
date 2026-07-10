@@ -667,6 +667,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
   const planeHeight = length;
   const red = '0.9 0.05 0.05';
   const green = '0.03 0.42 0.10';
+  const guideGreen = '0.05 0.7 0.15';
   const blue = '0.05 0.25 0.95';
 
   addCylinder(group, `${xCenter} 0 0`, '0 0 1 1.5708', Math.max(xLength, step), red);
@@ -704,6 +705,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
   yNodeValues.forEach((value, index) => {
     addSphere(group, `0 ${value} 0`, green);
     addAxisLabel(group, yNodeFenValues[index], `${xHalf + 0.72} ${value} ${zHalf + 0.72}`, green, '0 1 0 0');
+    addAxisLabel(group, '-----', `${xHalf + 1.23} ${value} ${zHalf + 0.72}`, guideGreen, '0 1 0 0', '0.38');
     if (includeYPlanes) addLayerPlane(group, 'y', value, xLength, zLength, planeHeight, green, xCenter, zCenter);
   });
 
