@@ -562,7 +562,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
     parent.appendChild(transform);
   }
 
-  function addAxisLabel(parent, textValue, translation, color, rotation = '1 0 0 -1.5708') {
+  function addAxisLabel(parent, textValue, translation, color, rotation = '1 0 0 -1.5708', size = '0.42') {
     const transform = document.createElement('transform');
     const shape = document.createElement('shape');
     const text = document.createElement('text');
@@ -571,8 +571,8 @@ function buildAxisMarkers(id, includeYPlanes = false) {
     transform.setAttribute('translation', translation);
     transform.setAttribute('rotation', rotation);
     text.setAttribute('string', `"${textValue}"`);
-    fontStyle.setAttribute('size', '0.42');
-    fontStyle.setAttribute('family', '"Times New Roman"');
+    fontStyle.setAttribute('size', size);
+    fontStyle.setAttribute('family', '"Microsoft JhengHei" "PMingLiU" "Times New Roman"');
     fontStyle.setAttribute('justify', '"MIDDLE" "MIDDLE"');
 
     text.appendChild(fontStyle);
@@ -666,7 +666,7 @@ function buildAxisMarkers(id, includeYPlanes = false) {
   const zHalf = Math.max(Math.abs(zMin), Math.abs(zMax));
   const planeHeight = length;
   const red = '0.9 0.05 0.05';
-  const green = '0.05 0.7 0.15';
+  const green = '0.03 0.42 0.10';
   const blue = '0.05 0.25 0.95';
 
   addCylinder(group, `${xCenter} 0 0`, '0 0 1 1.5708', Math.max(xLength, step), red);
@@ -705,6 +705,18 @@ function buildAxisMarkers(id, includeYPlanes = false) {
     addSphere(group, `0 ${value} 0`, green);
     addAxisLabel(group, yNodeFenValues[index], `${xHalf + 0.72} ${value} ${zHalf + 0.72}`, green, '0 1 0 0');
     if (includeYPlanes) addLayerPlane(group, 'y', value, xLength, zLength, planeHeight, green, xCenter, zCenter);
+  });
+
+  yNodeFenValues.forEach((fenValue, index) => {
+    const nextFenValue = yNodeFenValues[index + 1];
+    if (nextFenValue === undefined) return;
+
+    const delta = nextFenValue - fenValue;
+    const unitLabel = delta === 15 ? '材' : delta === 6 ? '栔' : '';
+    if (!unitLabel) return;
+
+    const midValue = ((fenValue + nextFenValue) / 2) * fenSize;
+    addAxisLabel(group, unitLabel, `${xHalf + 1.22} ${midValue} ${zHalf + 0.72}`, green, '0 1 0 0', '0.52');
   });
 
   scene.appendChild(group);
