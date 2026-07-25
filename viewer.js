@@ -18,10 +18,8 @@ const DEFAULT_WOOD_COLOR = '0.450 0.280 0.140';
 const AUTO_ROTATE_PERIOD_MS = 12000;
 const PALACE_VIEW_AUTO_ROTATE_PERIOD_MS = AUTO_ROTATE_PERIOD_MS * 2;
 const PALACE_VIEW_AUTO_ROTATE_DIRECTION = -1;
-const INLINE_FOLDER_MODEL_KEYS = new Set(['x3d:Palace1-1']);
-const FOLDER_MODEL_URL_OVERRIDES = {
-  'x3d:Palace1-1': 'X3D/Palace1-1-viewer.x3d',
-};
+const INLINE_FOLDER_MODEL_KEYS = new Set([]);
+const FOLDER_MODEL_URL_OVERRIDES = {};
 let activeModelKey = 'palace';
 let modelLoadRequestId = 0;
 let palaceViewCenter = [0, 8, 0];
