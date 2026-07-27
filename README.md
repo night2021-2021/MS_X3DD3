@@ -1,3 +1,7 @@
+**How to use**
+Just click index.html and you will see all of the project.
+
+
 MIT License
 
 Copyright (c) [2026] [YuChung Chen]
